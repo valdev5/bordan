@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connexion</title>
+  <link rel="icon" href="data:;base64,=">
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+  <main class="login-wrap">
+    <section class="card">
+      <h1>Se connecter</h1>
+      
+
+      <div class="row">
+        <label for="username">Utilisateur</label>
+        <input id="username" autocomplete="username" placeholder="Ex : Laurent" />
+      </div>
+
+      <div class="row">
+        <label for="password">Mot de passe</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+      </div>
+
+      <button id="btn-login" class="btn primary">Connexion</button>
+      <p id="target-info" class="muted info" aria-live="polite"></p>
+
+     
+    </section>
+  </main>
+
+  <!-- API d'abord, puis auth, puis la logique du login -->
+  <script src="api.js"></script>
+  <script src="auth.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>

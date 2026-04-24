@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Espace Chefs</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1 class="site-title">Espace Encadrants</h1>
+    <div class="auth-inline">
+      <span id="whoami" class="muted"></span>
+      <a class="btn outline" href="#" id="btn-logout">Se déconnecter</a>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="board">Tableau</button>
+      <button class="tab" data-tab="devis">Devis</button>
+      <button class="tab" data-tab="bon">Bon de travail</button>
+    </nav>
+
+    <!-- Filtre par chef -->
+    <div class="toolbar" style="display:flex;align-items:center;gap:12px;padding:8px 0">
+      <label class="checkbox-inline">
+        <input type="checkbox" id="show-all"> Voir tous les chantiers
+      </label>
+      <span class="muted small">(chef courant : <strong id="whoami-short">—</strong>)</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ===== BOARD ===== -->
+    <section class="view show" id="tab-board">
+      <h2 class="title">Tableau de suivi</h2>
+      <div class="board board--3">
+        <!-- Devis -->
+        <div class="col"><div class="col-head">Devis – Attente d’appel / RDV</div><div id="d-attente-appel" class="col-body"></div></div>
+        <div class="col"><div class="col-head">Devis – RDV pris</div><div id="d-rdv-pris" class="col-body"></div></div>
+        <div class="col"><div class="col-head">Devis – À saisir</div><div id="d-a-saisir" class="col-body"></div></div>
+        <div class="col"><div class="col-head">Devis – Saisi / attente retour</div><div id="d-attente-retour" class="col-body"></div></div>
+        <div class="col"><div class="col-head">Devis – Accepté</div><div id="d-accepte" class="col-body"></div></div>
+        <div class="col"><div class="col-head">Devis – Refusé</div><div id="d-refuse" class="col-body"></div></div>
+        <!-- Bons -->
+        <div class="col"><div class="col-head">BT – Prêt / en attente</div><div id="b-pret" class="col-body"></div></div>
+        <div class="col"><div class="col-head">BT – RDV pris + Affectation</div><div id="b-affect" class="col-body"></div></div>
+        <div class="col"><div class="col-head">BT – Chantier en cours</div><div id="b-encours" class="col-body"></div></div>
+        <div class="col"><div class="col-head">BT – À facturer</div><div id="b-facturer" class="col-body"></div></div>
+        <div class="col"><div class="col-head">BT – Archivés</div><div id="b-archive" class="col-body"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== DEVIS ===== -->
+    <section class="view" id="tab-devis">
+      <div class="sheet">
+        <h2 class="title">Saisir / Modifier un devis</h2>
+
+        <div class="grid-3">
+          <div class="row"><label>Numéro de devis</label><input id="dnum" name="devis.num_devis" type="text" placeholder="DV-YYYYMMDD-XXX"></div>
+          <div class="row"><label>Date</label><input id="ddate" name="devis.date_demande" type="date"></div>
+          <div class="row"><label>Indice</label><input name="devis.indice" type="text" placeholder="Indice interne (optionnel)"></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="row"><label>Nom du client</label><input name="devis.nom" type="text"></div>
+          <div class="row"><label>N° client</label><input name="devis.num_client" type="text"></div>
+        </div>
+
+        <div class="row"><label>Adresse</label><input name="devis.adresse" type="text"></div>
+
+        <!-- Adresse chantier différente (DEVIS) -->
+        <div class="row">
+          <label><input type="checkbox" name="devis.adresse_chantier_diff" id="d-adrdiff"> Adresse chantier différente</label>
+        </div>
+        <div id="bloc-chantier" style="display:none">
+          <div class="row"><label>Adresse chantier</label><input name="devis.adresse_chantier" type="text"></div>
+          <div class="grid-2">
+            <div class="row"><label>Nom locataire</label><input name="devis.nom_locataire" type="text"></div>
+            <div class="row"><label>Téléphone locataire</label><input name="devis.tel_locataire" type="tel"></div>
+          </div>
+          <div class="row"><label>Remarques chantier</label><textarea name="devis.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="row"><label>Téléphone</label><input name="devis.tel" type="tel"></div>
+          <div class="row"><label>Objet / Objet de la demande</label><input name="devis.objet_demande" type="text"></div>
+        </div>
+
+        <fieldset>
+          <legend>Suivi</legend>
+          <div class="grid-3">
+            <label><input type="checkbox" name="devis.signe"> Devis signé</label>
+            <label><input type="checkbox" name="devis.acompte"> Acompte reçu</label>
+            <label><input type="checkbox" name="devis.refuse"> Refusé</label>
+          </div>
+        </fieldset>
+
+        <div class="actions" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
+          <button class="btn outline" id="load-devis">Charger un devis…</button>
+          <button class="btn primary" id="save-devis">Enregistrer le devis</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== BON ===== -->
+    <section class="view" id="tab-bon">
+      <div class="sheet">
+        <h2 class="title">Bon de travail</h2>
+
+        <div class="grid-3">
+          <div class="row"><label>N° de devis rattaché</label><input name="bon.num_devis" type="text"></div>
+          <div class="row"><label>Date du devis</label><input name="bon.date_devis" type="date"></div>
+          <div class="row"><label>Acompte</label><input name="bon.acompte" type="text" placeholder="Oui / Non"></div>
+        </div>
+
+        <div class="grid-3">
+          <div class="row"><label>Client – Nom</label><input name="bon.client_nom" type="text"></div>
+          <div class="row"><label>Client – N°</label><input name="bon.client_num" type="text"></div>
+          <div class="row"><label>Téléphone</label><input name="bon.client_tel" type="tel"></div>
+        </div>
+        <div class="row"><label>Adresse</label><input name="bon.client_adresse" type="text"></div>
+
+        <fieldset>
+          <legend>RDV initial</legend>
+          <div class="grid-2">
+            <div class="row"><label>Date RDV</label><input name="bon.rdv" type="date"></div>
+            <div class="row"><label>Heure RDV</label><input name="bon.rdv_heure" type="time"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>RDV supplémentaires (date + heure)</legend>
+          <div class="table-responsive">
+            <table>
+              <thead><tr><th>Date</th><th>Heure</th><th></th></tr></thead>
+              <tbody id="rdv-plus-body"></tbody>
+            </table>
+          </div>
+          <div class="actions left"><button class="btn" id="add-rdv">Ajouter un RDV</button></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Affectation & Gestion</legend>
+          <div class="row">
+            <label>Équipe affectée</label>
+            <div class="chips">
+              <label><input type="checkbox" class="aff-team" value="Alexis"><span>Alexis</span></label>
+              <label><input type="checkbox" class="aff-team" value="Thomas"><span>Thomas</span></label>
+              <label><input type="checkbox" class="aff-team" value="Augustin"><span>Augustin</span></label>
+              <label><input type="checkbox" class="aff-team" value="Pierre"><span>Pierre</span></label>
+              <label><input type="checkbox" class="aff-team" value="Clément"><span>Clément</span></label>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="row"><label>Encadrants ayant accès au bon</label>
+              <div id="bon-encadrants" class="chips">
+                <label><input type="checkbox" class="enc-team" value="Laurent"><span>Laurent</span></label>
+                <label><input type="checkbox" class="enc-team" value="Cédric M"><span>Cédric M</span></label>
+                <label><input type="checkbox" class="enc-team" value="Cédric A"><span>Cédric A</span></label>
+                <label><input type="checkbox" class="enc-team" value="Vivien"><span>Vivien</span></label>
+              </div>
+            </div>
+            <div class="row"><label>Envoyer à la compta</label>
+              <select id="bon-admin">
+                <option value="">—</option><option>Sophie</option><option>Catherine</option><option>Karine</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <label>Autres personnes à associer / affectation</label>
+            <div class="chips">
+              <label><input type="checkbox" class="aff-team" value="Laurent"><span>Laurent</span></label>
+              <label><input type="checkbox" class="aff-team" value="Cédric M"><span>Cédric M</span></label>
+              <label><input type="checkbox" class="aff-team" value="Cédric A"><span>Cédric A</span></label>
+              <label><input type="checkbox" class="aff-team" value="Vivien"><span>Vivien</span></label>
+              <label><input type="checkbox" class="aff-team" value="Sophie"><span>Sophie</span></label>
+              <label><input type="checkbox" class="aff-team" value="Catherine"><span>Catherine</span></label>
+              <label><input type="checkbox" class="aff-team" value="Karine"><span>Karine</span></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Adresse chantier différente (BON) -->
+        <fieldset>
+          <legend>Adresse chantier</legend>
+          <label><input type="checkbox" name="bon.adresse_chantier_diff" id="b-adrdiff"> Adresse chantier différente</label>
+          <div id="b-bloc-chantier" style="display:none; margin-top:8px">
+            <div class="row"><label>Adresse chantier</label><input name="bon.adresse_chantier" type="text"></div>
+            <div class="grid-2">
+              <div class="row"><label>Nom locataire</label><input name="bon.nom_locataire" type="text"></div>
+              <div class="row"><label>Téléphone locataire</label><input name="bon.tel_locataire" type="tel"></div>
+            </div>
+            <div class="row"><label>Remarques chantier</label><textarea name="bon.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
+          </div>
+        </fieldset>
+
+        <!-- Matériel -->
+        <fieldset>
+          <legend>Matériel</legend>
+          <div class="row row-3col">
+            <label>Commande matériel</label>
+            <input name="bon.cmd_materiel" type="text">
+            <label class="checkbox-inline"><input type="checkbox" name="bon.cmd_materiel_cb"> Commande faite</label>
+          </div>
+          <div class="row row-3col">
+            <label>Réception matériel</label>
+            <input name="bon.recep_materiel" type="text">
+            <label class="checkbox-inline"><input type="checkbox" name="bon.recep_materiel_cb"> Matériel reçu</label>
+          </div>
+        </fieldset>
+
+        <!-- Messages chantier (encadrant <-> intervenants) -->
+        <fieldset>
+          <legend>Messages chantier</legend>
+          <div class="chat">
+            <div class="small muted" style="margin-bottom:4px">Fil de messages</div>
+            <div id="mgr-chat-log" class="chat-log"></div>
+            <div class="chat-form" style="margin-top:6px">
+              <input type="text" id="mgr-chat-input" class="chat-input" placeholder="Écrire un message aux intervenants…">
+              <button class="btn" id="mgr-chat-send">Envoyer</button>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Feuille d'heures -->
+        <fieldset>
+          <legend>Feuille d’heures</legend>
+          <div class="table-responsive">
+            <table>
+              <thead><tr><th>Date</th><th>Heure début</th><th>Date</th><th>Heure fin</th><th>Heures</th><th>Commentaire</th><th></th></tr></thead>
+              <tbody id="heures-body"></tbody>
+            </table>
+          </div>
+          <div class="actions left"><button class="btn" id="add-row">Ajouter une ligne</button></div>
+        </fieldset>
+
+        <div class="actions" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
+          <button class="btn outline" id="load-bon">Charger un bon…</button>
+          <button class="btn primary" id="save-bon">Enregistrer le bon</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script src="auth.js"></script>
+  <script src="app-common.js"></script>
+
+  <!-- Toggles (adresse chantier différente) -->
+  <script>
+    (function(){
+      const cb1 = document.getElementById('d-adrdiff');
+      const bloc1 = document.getElementById('bloc-chantier');
+      function sync1(){ if(cb1 && bloc1) bloc1.style.display = cb1.checked ? '' : 'none'; }
+      cb1 && (cb1.onchange = sync1, sync1());
+
+      const cb2 = document.getElementById('b-adrdiff');
+      const bloc2 = document.getElementById('b-bloc-chantier');
+      function sync2(){ if(cb2 && bloc2) bloc2.style.display = cb2.checked ? '' : 'none'; }
+      cb2 && (cb2.onchange = sync2, sync2());
+    })();
+  </script>
+
+  <script src="manager.js"></script>
+</body>
+</html>

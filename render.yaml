@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bordanova
+    env: node
+    rootDir: 2026/backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_PATH
+        value: ./db/database.sqlite
