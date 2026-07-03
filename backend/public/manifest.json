@@ -1,0 +1,20 @@
+{
+  "name": "Bordanova",
+  "short_name": "Bordan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1015",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
