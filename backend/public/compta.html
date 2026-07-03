@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Espace Comptabilité</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Espace Comptabilité</h1>
+    <div class="auth-inline">
+      <span id="whoami" class="muted"></span>
+      <a class="btn outline" href="#" id="btn-logout">Se déconnecter</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="view show">
+      <div class="sheet">
+        <h2 class="title">Bons « À facturer » qui me sont assignés</h2>
+        <div id="compta-empty" class="tips" style="display:none;">Aucun bon en attente.</div>
+        <div id="compta-list" class="work-list"></div>
+
+        <hr style="margin:24px 0; opacity:.2">
+
+        <h2 class="title">Archivés</h2>
+        <div id="arch-empty" class="tips" style="display:none;">Aucun bon archivé.</div>
+        <div id="arch-list" class="work-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script src="auth.js"></script>
+  <script src="app-common.js"></script>
+  <script src="compta.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mon travail — Intervenant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Mon travail</h1>
+    <div class="auth-inline">
+      <span id="whoami" class="muted"></span>
+      <a class="btn outline" href="#" id="btn-logout">Se déconnecter</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="view show">
+      <div class="sheet">
+        <h2 class="title">Mes chantiers</h2>
+        <div id="work-empty" class="tips" style="display:none">Aucun bon ne t’est affecté pour le moment.</div>
+        <div id="work-list" class="work-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script src="auth.js"></script>
+  <script src="app-common.js"></script>
+  <script src="worker.js"></script>
+</body>
+</html>
