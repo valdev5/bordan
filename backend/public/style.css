@@ -33,6 +33,22 @@ body {
   color: var(--text);
   font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* Grille technique tres discrete en fond, qui s'estompe vers le bas */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(45, 212, 255, .07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 212, 255, .07) 1px, transparent 1px);
+  background-size: 34px 34px;
+  -webkit-mask-image: radial-gradient(85% 85% at 50% 12%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(85% 85% at 50% 12%, #000 55%, transparent 100%);
 }
 
 /* ===== Texte général ===== */
@@ -66,6 +82,8 @@ a:hover {
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .title {
