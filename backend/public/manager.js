@@ -1600,7 +1600,7 @@ function renderBoard() {
     const unread = countUnreadFor(bon, cleanText(CURRENT_USER));
     const unreadBadge =
       unread > 0
-        ? `<span class="badge" title="Messages non lus">${unread} nouveau${unread > 1 ? 'x' : ''}</span>`
+        ? `<span class="badge badge-neon" title="Messages non lus">${unread} nouveau${unread > 1 ? 'x' : ''}</span>`
         : '';
 
     const card = document.createElement('div');

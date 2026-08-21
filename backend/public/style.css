@@ -401,6 +401,24 @@ textarea {
   border-color: var(--primary);
 }
 
+/* ===== Badge neon (notifications non lues) ===== */
+.badge-neon {
+  background: #062012;
+  border-color: #39ff88;
+  color: #baffcb;
+  font-weight: 700;
+  animation: neon-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px #39ff88, 0 0 8px rgba(57,255,136,.6);
+  }
+  50% {
+    box-shadow: 0 0 10px #39ff88, 0 0 22px #39ff88, 0 0 32px rgba(57,255,136,.7);
+  }
+}
+
 /* ===== Actions ===== */
 .actions {
   display: flex;
