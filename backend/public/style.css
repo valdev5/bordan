@@ -403,19 +403,27 @@ textarea {
 
 /* ===== Badge neon (notifications non lues) ===== */
 .badge-neon {
-  background: #062012;
-  border-color: #39ff88;
-  color: #baffcb;
+  background: #051b33;
+  border-color: #2dd4ff;
+  color: #c3ecff;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   animation: neon-pulse 1.4s ease-in-out infinite;
+}
+
+.badge-neon .badge-neon-icon {
+  font-size: 13px;
+  line-height: 1;
 }
 
 @keyframes neon-pulse {
   0%, 100% {
-    box-shadow: 0 0 4px #39ff88, 0 0 8px rgba(57,255,136,.6);
+    box-shadow: 0 0 4px #2dd4ff, 0 0 8px rgba(45,212,255,.6);
   }
   50% {
-    box-shadow: 0 0 10px #39ff88, 0 0 22px #39ff88, 0 0 32px rgba(57,255,136,.7);
+    box-shadow: 0 0 10px #2dd4ff, 0 0 22px #2dd4ff, 0 0 32px rgba(45,212,255,.7);
   }
 }
 
