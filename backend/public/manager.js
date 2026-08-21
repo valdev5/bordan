@@ -1207,7 +1207,7 @@ function autoCreateOrUpdateBonFromDevis(devis) {
       ...(existing?.raw || {}),
       'bon.num_devis': devis.num || '',
       'bon.date_devis': raw['devis.date_demande'] || '',
-      'bon.acompte': devis.acompte === 'oui' ? '1' : '',
+      'bon.acompte': devis.acompte === 'oui' ? 'Oui' : 'Non',
       'bon.client_nom': raw['devis.nom'] || '',
       'bon.client_num': raw['devis.num_client'] || '',
       'bon.client_adresse': raw['devis.adresse'] || '',
