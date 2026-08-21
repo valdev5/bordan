@@ -35,9 +35,12 @@ function telLink(number) {
     : '-';
 }
 
-function mapLink(address) {
-  return address
-    ? `<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}" class="link">${address}</a>`
+// cityLine (code postal + ville) evite les adresses ambigues sur Google Maps
+// quand la meme rue existe dans plusieurs communes
+function mapLink(address, cityLine = '') {
+  const full = [address, cityLine].filter(Boolean).join(', ');
+  return full
+    ? `<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(full)}" class="link">${full}</a>`
     : '-';
 }
 
@@ -137,9 +140,11 @@ function renderWork() {
     const client = bon.client || raw['bon.client_nom'] || 'Client ?';
     const telClient = raw['bon.client_tel'] || '';
     const adrClient = raw['bon.client_adresse'] || '';
+    const villeClient = [raw['bon.client_code_postal'], raw['bon.client_ville']].filter(Boolean).join(' ');
 
     const adrDiff = (raw['bon.adresse_chantier_diff'] || 'non') === 'oui';
     const adrChant = raw['bon.adresse_chantier'] || '';
+    const villeChant = [raw['bon.chantier_code_postal'], raw['bon.chantier_ville']].filter(Boolean).join(' ');
     const locNom = raw['bon.nom_locataire'] || '';
     const locTel = raw['bon.tel_locataire'] || '';
     const remChant = raw['bon.remarques_chantier'] || '';
@@ -176,13 +181,13 @@ function renderWork() {
         </div>
         <div>
           <div class="small muted">Adresse facturation</div>
-          <div>${mapLink(adrClient)}</div>
+          <div>${mapLink(adrClient, villeClient)}</div>
         </div>
       </div>
 
       <div class="box" style="margin:6px 0">
         <div class="small muted">Adresse chantier ${adrDiff ? '(differente)' : ''}</div>
-        <div>${mapLink(adrDiff ? adrChant : adrClient)}</div>
+        <div>${mapLink(adrDiff ? adrChant : adrClient, adrDiff ? villeChant : villeClient)}</div>
         <div class="small" style="margin-top:4px">
           ${locNom ? `Locataire: <strong>${locNom}</strong> · ` : ''}
           ${locTel ? `Tel: <a href="tel:${locTel.replace(/\s+/g, '')}" class="link">${locTel}</a>` : ''}
