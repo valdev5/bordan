@@ -1345,9 +1345,8 @@ $('#save-bon')?.addEventListener('click', () => {
 
   Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis', currentBonId));
 
-  currentBonId = null;
-  currentBonNum = item.num_devis;
   alert('Bon enregistre.');
+  prepareNewBonForm();
   showTab('board');
 });
 
