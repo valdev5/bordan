@@ -15,6 +15,45 @@ body{
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
   color:var(--text);
   background:var(--bg);
+  overflow-x:hidden;
+  position:relative;
+}
+
+/* Halo anime en fond, sobre */
+body::before,
+body::after{
+  content:'';
+  position:fixed;
+  width:60vmax;
+  height:60vmax;
+  max-width:700px;
+  max-height:700px;
+  border-radius:50%;
+  filter:blur(90px);
+  opacity:.28;
+  z-index:0;
+  pointer-events:none;
+  animation:login-drift 18s ease-in-out infinite alternate;
+}
+
+body::before{
+  background:#0ea5e9;
+  top:-18%;
+  left:-12%;
+}
+
+body::after{
+  background:#2dd4ff;
+  bottom:-18%;
+  right:-12%;
+  animation-delay:-9s;
+  animation-duration:22s;
+}
+
+@keyframes login-drift{
+  0%{transform:translate(0,0) scale(1);}
+  50%{transform:translate(5%,8%) scale(1.08);}
+  100%{transform:translate(-4%,-6%) scale(.96);}
 }
 
 /* CENTRAGE */
@@ -23,6 +62,8 @@ body{
   display:grid;
   place-items:center;
   padding:24px;
+  position:relative;
+  z-index:1;
 }
 
 /* CARTE */
@@ -33,6 +74,22 @@ body{
   border-radius:16px;
   padding:22px;
   box-shadow:0 10px 30px rgba(0,0,0,.4);
+  animation:card-in .6s cubic-bezier(.16,1,.3,1) both;
+}
+
+@keyframes card-in{
+  from{opacity:0; transform:translateY(18px) scale(.98);}
+  to{opacity:1; transform:translateY(0) scale(1);}
+}
+
+@media (prefers-reduced-motion: reduce){
+  body::before,
+  body::after{
+    animation:none;
+  }
+  .card{
+    animation:none;
+  }
 }
 
 /* TITRE */
