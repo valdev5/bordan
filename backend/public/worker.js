@@ -201,6 +201,16 @@ function renderWork() {
         </div>
       </div>
 
+      <div class="gallery-block" style="margin-top:10px">
+        <div class="small muted" style="margin-bottom:4px">Photos chantier</div>
+        <div class="gallery" data-gallery></div>
+        <div class="small muted" data-gallery-empty style="display:none">Aucune photo.</div>
+        <div style="margin-top:6px">
+          <input type="file" accept="image/*" capture="environment" multiple class="photo-input" style="display:none">
+          <button type="button" class="btn photo-add">Ajouter une photo</button>
+        </div>
+      </div>
+
       <div class="work-form">
         <div><label>Date</label><input type="date" class="wdate" value="${today()}"></div>
         <div><label>Heures</label><input type="text" class="whours" placeholder="ex: 1.5, 1,25, 1h30"></div>
@@ -277,6 +287,64 @@ function renderWork() {
       );
 
       input.value = '';
+    });
+
+    function renderGallery() {
+      const freshBon = Store.load(Store.KEY_BONS).find((entry) => entry.id === bon.id) || bon;
+      const photos = Array.isArray(freshBon.photos) ? freshBon.photos : [];
+      const galleryBox = card.querySelector('[data-gallery]');
+      const emptyBox = card.querySelector('[data-gallery-empty]');
+
+      emptyBox.style.display = photos.length ? 'none' : '';
+      galleryBox.innerHTML = photos
+        .map((photo) => `<img src="${photo.dataUrl}" alt="Photo chantier" class="gallery-thumb" data-id="${photo.id}">`)
+        .join('');
+
+      galleryBox.querySelectorAll('.gallery-thumb').forEach((img) => {
+        img.addEventListener('click', () => window.openLightbox(img.src));
+      });
+    }
+
+    renderGallery();
+
+    card.querySelector('.photo-add').addEventListener('click', () => {
+      card.querySelector('.photo-input').click();
+    });
+
+    card.querySelector('.photo-input').addEventListener('change', async (event) => {
+      const files = Array.from(event.target.files || []);
+      event.target.value = '';
+      if (!files.length) {
+        return;
+      }
+
+      for (const file of files) {
+        try {
+          const dataUrl = await window.compressImageFile(file);
+          const allBons = Store.load(Store.KEY_BONS);
+          const index = allBons.findIndex((entry) => entry.id === bon.id);
+          if (index < 0) {
+            continue;
+          }
+
+          const copy = { ...allBons[index] };
+          copy.photos = Array.isArray(copy.photos) ? copy.photos : [];
+          copy.photos.push({
+            id: window.uid(),
+            from: CURRENT_USER,
+            ts: Date.now(),
+            date: new Date().toLocaleString(),
+            dataUrl,
+          });
+          allBons[index] = copy;
+          Store.save(Store.KEY_BONS, allBons);
+        } catch (error) {
+          console.warn(error);
+          alert("Erreur lors de l'ajout d'une photo.");
+        }
+      }
+
+      renderGallery();
     });
 
     card.querySelector('.wsave').addEventListener('click', () => {

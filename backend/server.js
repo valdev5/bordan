@@ -44,7 +44,7 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/bons", bonRoutes);

@@ -921,6 +921,7 @@ function openBon(item) {
 
   showTab('bon');
   initManagerChat(item);
+  initManagerGallery(item);
   markChatSeen(item, cleanText(CURRENT_USER));
   renderBoard();
 }
@@ -1070,6 +1071,108 @@ function initManagerChat(bon) {
     input.value = '';
     renderLog();
     renderBoard();
+  };
+}
+
+/* Galerie photos */
+function initManagerGallery(bon) {
+  const grid = $('#mgr-gallery');
+  const empty = $('#mgr-gallery-empty');
+  const input = $('#mgr-photo-input');
+  const addButton = $('#mgr-photo-add');
+
+  if (!grid || !empty || !input || !addButton) {
+    return;
+  }
+
+  const who = cleanText(CURRENT_USER) || 'Encadrant';
+
+  function renderGallery() {
+    const freshBon = Store.load(Store.KEY_BONS).find((entry) => entry.id === bon.id) || bon;
+    const photos = Array.isArray(freshBon.photos) ? freshBon.photos : [];
+
+    empty.style.display = photos.length ? 'none' : '';
+    grid.innerHTML = photos
+      .map(
+        (photo) => `
+          <div class="gallery-item" data-id="${photo.id}">
+            <img src="${photo.dataUrl}" alt="Photo chantier" class="gallery-thumb">
+            <button type="button" class="gallery-remove" title="Supprimer">&times;</button>
+          </div>
+        `,
+      )
+      .join('');
+
+    grid.querySelectorAll('.gallery-thumb').forEach((img) => {
+      img.addEventListener('click', () => window.openLightbox(img.src));
+    });
+
+    grid.querySelectorAll('.gallery-remove').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = button.closest('.gallery-item')?.dataset.id;
+        if (!id || !confirm('Supprimer cette photo ?')) {
+          return;
+        }
+
+        const allBons = Store.load(Store.KEY_BONS);
+        const index = allBons.findIndex((entry) => entry.id === bon.id);
+        if (index < 0) {
+          return;
+        }
+
+        const updated = { ...allBons[index] };
+        updated.photos = (updated.photos || []).filter((photo) => photo.id !== id);
+        allBons[index] = updated;
+        Store.save(Store.KEY_BONS, allBons);
+        renderGallery();
+      });
+    });
+  }
+
+  renderGallery();
+
+  addButton.onclick = () => input.click();
+
+  input.onchange = async () => {
+    const files = Array.from(input.files || []);
+    input.value = '';
+    if (!files.length) {
+      return;
+    }
+
+    addButton.disabled = true;
+    addButton.textContent = 'Ajout en cours...';
+
+    try {
+      for (const file of files) {
+        const dataUrl = await window.compressImageFile(file);
+
+        const allBons = Store.load(Store.KEY_BONS);
+        const index = allBons.findIndex((entry) => entry.id === bon.id);
+        if (index < 0) {
+          continue;
+        }
+
+        const updated = { ...allBons[index] };
+        updated.photos = Array.isArray(updated.photos) ? updated.photos : [];
+        updated.photos.push({
+          id: window.uid(),
+          from: who,
+          ts: Date.now(),
+          date: new Date().toLocaleString(),
+          dataUrl,
+        });
+        allBons[index] = updated;
+        Store.save(Store.KEY_BONS, allBons);
+      }
+    } catch (error) {
+      console.warn(error);
+      alert("Erreur lors de l'ajout d'une photo.");
+    } finally {
+      addButton.disabled = false;
+      addButton.textContent = 'Ajouter des photos';
+      renderGallery();
+    }
   };
 }
 

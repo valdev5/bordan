@@ -177,3 +177,41 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 window.today = window.today || (() => new Date().toISOString().slice(0, 10));
 window.uid = window.uid || (() => Math.random().toString(36).slice(2, 8) + '-' + Date.now().toString(36));
+
+// Compresse une photo (redimensionnement + JPEG) avant stockage, pour garder des bons legers
+window.compressImageFile = window.compressImageFile || function compressImageFile(file, options = {}) {
+  const maxDim = options.maxDim || 1600;
+  const quality = options.quality || 0.72;
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('Lecture du fichier impossible'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Image illisible'));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
+// Affiche une photo en plein ecran, clic (ou touche) pour fermer
+window.openLightbox = window.openLightbox || function openLightbox(url) {
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox-overlay';
+  overlay.innerHTML = `<img src="${url}" alt="Photo chantier">`;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+};
