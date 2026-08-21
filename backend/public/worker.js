@@ -74,18 +74,35 @@ function renderWork() {
     return;
   }
 
-  // La synchro periodique reconstruit toute la liste : on sauvegarde le message
-  // en cours de saisie pour ne pas l effacer sous les yeux de l utilisateur.
+  // La synchro periodique reconstruit toute la liste : on sauvegarde le champ
+  // en cours de saisie (message ou heures) pour ne pas l effacer sous les yeux
+  // de l utilisateur.
+  const PRESERVED_FIELD_CLASSES = ['chat-input', 'wdate', 'whours', 'wnote'];
+  // Les champs date ne supportent pas selectionStart/End (ca leve une exception)
+  const SELECTABLE_TYPES = new Set(['text', 'search', 'tel', 'url', 'password', 'textarea']);
   const activeElement = document.activeElement;
-  let pendingChatInput = null;
-  if (activeElement && wrap.contains(activeElement) && activeElement.classList.contains('chat-input')) {
-    pendingChatInput = {
-      bonId: activeElement.closest('.work-card')?.dataset.bonId,
-      value: activeElement.value,
-      selectionStart: activeElement.selectionStart,
-      selectionEnd: activeElement.selectionEnd,
-    };
+  let pendingField = null;
+  if (activeElement && wrap.contains(activeElement)) {
+    const preservedClass = PRESERVED_FIELD_CLASSES.find((cls) => activeElement.classList.contains(cls));
+    if (preservedClass) {
+      const supportsSelection = SELECTABLE_TYPES.has(activeElement.type);
+      pendingField = {
+        bonId: activeElement.closest('.work-card')?.dataset.bonId,
+        className: preservedClass,
+        value: activeElement.value,
+        selectionStart: supportsSelection ? activeElement.selectionStart : null,
+        selectionEnd: supportsSelection ? activeElement.selectionEnd : null,
+      };
+    }
   }
+
+  // Une modification de ligne d'heures en cours (bouton "Modifier" clique) ne
+  // doit pas non plus etre perdue au rafraichissement, meme si aucun champ
+  // n'a le focus a cet instant precis.
+  const pendingEdits = Array.from(wrap.querySelectorAll('.work-card[data-editing-key]')).map((card) => ({
+    bonId: card.dataset.bonId,
+    editingKey: card.dataset.editingKey,
+  }));
 
   wrap.innerHTML = '';
 
@@ -229,7 +246,10 @@ function renderWork() {
         <div><label>Date</label><input type="date" class="wdate" value="${today()}"></div>
         <div><label>Heures</label><input type="text" class="whours" placeholder="ex: 1.5, 1,25, 1h30"></div>
         <div><label>Commentaire</label><textarea class="wnote" placeholder="Ce qui a ete fait"></textarea></div>
-        <button class="btn primary wsave">Ajouter mes heures</button>
+        <div style="display:flex; gap:8px">
+          <button class="btn primary wsave">Ajouter mes heures</button>
+          <button type="button" class="btn outline wcancel" style="display:none">Annuler la modification</button>
+        </div>
       </div>
 
       <div style="margin-top:10px; display:grid; grid-template-columns:200px 1fr; gap:8px; align-items:center;">
@@ -249,17 +269,75 @@ function renderWork() {
 
     const logBox = card.querySelector('[data-wlog]');
     const totalBox = card.querySelector('[data-wtotal]');
+    const dateField = card.querySelector('.wdate');
+    const hoursField = card.querySelector('.whours');
+    const noteField = card.querySelector('.wnote');
+    const saveButton = card.querySelector('.wsave');
+    const cancelButton = card.querySelector('.wcancel');
+
+    // L etat "en cours de modification" est stocke sur le DOM (dataset) plutot
+    // qu en variable de fermeture : la synchro periodique reconstruit la carte
+    // toutes les 5s, une simple variable locale serait perdue au rafraichissement.
+    function keyOf(entry, absoluteIndex) {
+      return entry.id || `idx:${absoluteIndex}`;
+    }
+
+    function findEntry(entries, key) {
+      if (String(key).startsWith('idx:')) {
+        return entries[Number(key.slice(4))];
+      }
+      return entries.find((entry) => entry.id === key);
+    }
+
+    function startEdit(entry, key) {
+      card.dataset.editingKey = key;
+      dateField.value = entry.date || today();
+      hoursField.value = entry.h != null ? String(entry.h) : '';
+      noteField.value = entry.note || '';
+      saveButton.textContent = 'Enregistrer la modification';
+      cancelButton.style.display = '';
+      dateField.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      delete card.dataset.editingKey;
+      dateField.value = today();
+      hoursField.value = '';
+      noteField.value = '';
+      saveButton.textContent = 'Ajouter mes heures';
+      cancelButton.style.display = 'none';
+    }
+
+    cancelButton.addEventListener('click', cancelEdit);
 
     function refreshLog() {
       const fresh = Store.load(Store.KEY_BONS).find((entry) => entry.id === bon.id);
       const entries = fresh?.hours?.[CURRENT_USER] || [];
-      const lastEntries = entries.slice(-5);
+      const lastEntries = entries
+        .map((entry, absoluteIndex) => ({ entry, key: keyOf(entry, absoluteIndex) }))
+        .slice(-5);
 
       logBox.innerHTML = lastEntries.length
         ? lastEntries
-            .map((entry) => `${entry.date || '?'} - ${entry.h || '0'}h ${entry.note ? `· ${entry.note}` : ''}`)
-            .join('<br>')
+            .map(
+              ({ entry, key }) => `
+                <div class="wlog-line" style="display:flex; align-items:center; gap:6px; margin-bottom:2px">
+                  <span>${entry.date || '?'} - ${entry.h || '0'}h ${entry.note ? `· ${entry.note}` : ''}</span>
+                  <button type="button" class="btn outline wedit" data-key="${key}" style="padding:2px 8px; font-size:11px">Modifier</button>
+                </div>
+              `,
+            )
+            .join('')
         : '-';
+
+      logBox.querySelectorAll('.wedit').forEach((button) => {
+        button.addEventListener('click', () => {
+          const entry = findEntry(entries, button.dataset.key);
+          if (entry) {
+            startEdit(entry, button.dataset.key);
+          }
+        });
+      });
 
       const sum = entries.reduce((acc, entry) => acc + (parseFloat(entry.h) || 0), 0);
       totalBox.textContent = `${(Math.round(sum * 100) / 100).toFixed(2)} h`;
@@ -361,10 +439,10 @@ function renderWork() {
       renderGallery();
     });
 
-    card.querySelector('.wsave').addEventListener('click', () => {
-      const date = card.querySelector('.wdate').value;
-      const rawHours = card.querySelector('.whours').value;
-      const note = card.querySelector('.wnote').value.trim();
+    saveButton.addEventListener('click', () => {
+      const date = dateField.value;
+      const rawHours = hoursField.value;
+      const note = noteField.value.trim();
 
       if (!date) {
         alert('La date est obligatoire.');
@@ -384,19 +462,32 @@ function renderWork() {
         return;
       }
 
+      const editingKey = card.dataset.editingKey || null;
       const copy = { ...allBons[index] };
       copy.hours = copy.hours || {};
       copy.hours[CURRENT_USER] = copy.hours[CURRENT_USER] || [];
-      copy.hours[CURRENT_USER].push({ date, h: decimalHours, note });
+
+      if (editingKey) {
+        const entry = findEntry(copy.hours[CURRENT_USER], editingKey);
+        if (!entry) {
+          alert('Cette ligne n existe plus.');
+          cancelEdit();
+          return;
+        }
+        entry.date = date;
+        entry.h = decimalHours;
+        entry.note = note;
+      } else {
+        copy.hours[CURRENT_USER].push({ id: window.uid(), date, h: decimalHours, note });
+      }
 
       allBons[index] = copy;
       Store.save(Store.KEY_BONS, allBons);
 
+      const wasEditing = !!editingKey;
+      cancelEdit();
       refreshLog();
-      card.querySelector('.wdate').value = today();
-      card.querySelector('.whours').value = '';
-      card.querySelector('.wnote').value = '';
-      alert('Heures enregistrees.');
+      alert(wasEditing ? 'Ligne modifiee.' : 'Heures enregistrees.');
     });
 
     card.querySelector('.wprogress').addEventListener('change', (event) => {
@@ -430,13 +521,53 @@ function renderWork() {
     wrap.appendChild(card);
   });
 
-  if (pendingChatInput) {
-    const restoredCard = wrap.querySelector(`[data-bon-id="${pendingChatInput.bonId}"]`);
-    const restoredInput = restoredCard?.querySelector('.chat-input');
-    if (restoredInput) {
-      restoredInput.value = pendingChatInput.value;
-      restoredInput.focus();
-      restoredInput.setSelectionRange(pendingChatInput.selectionStart, pendingChatInput.selectionEnd);
+  pendingEdits.forEach(({ bonId, editingKey }) => {
+    const restoredCard = wrap.querySelector(`[data-bon-id="${bonId}"]`);
+    if (!restoredCard) {
+      return;
+    }
+    restoredCard.dataset.editingKey = editingKey;
+    const restoredSave = restoredCard.querySelector('.wsave');
+    const restoredCancel = restoredCard.querySelector('.wcancel');
+    if (restoredSave) {
+      restoredSave.textContent = 'Enregistrer la modification';
+    }
+    if (restoredCancel) {
+      restoredCancel.style.display = '';
+    }
+
+    // Repeuple date/heures/commentaire avec la ligne en cours de modification,
+    // au cas ou le champ actif (restaure plus bas) ne couvre pas les 3 champs.
+    const editedBon = all.find((entry) => String(entry.id) === bonId);
+    const entries = editedBon?.hours?.[CURRENT_USER] || [];
+    const editedEntry = String(editingKey).startsWith('idx:')
+      ? entries[Number(editingKey.slice(4))]
+      : entries.find((entry) => entry.id === editingKey);
+    if (editedEntry) {
+      const dateField = restoredCard.querySelector('.wdate');
+      const hoursField = restoredCard.querySelector('.whours');
+      const noteField = restoredCard.querySelector('.wnote');
+      if (dateField) {
+        dateField.value = editedEntry.date || today();
+      }
+      if (hoursField) {
+        hoursField.value = editedEntry.h != null ? String(editedEntry.h) : '';
+      }
+      if (noteField) {
+        noteField.value = editedEntry.note || '';
+      }
+    }
+  });
+
+  if (pendingField) {
+    const restoredCard = wrap.querySelector(`[data-bon-id="${pendingField.bonId}"]`);
+    const restoredField = restoredCard?.querySelector(`.${pendingField.className}`);
+    if (restoredField) {
+      restoredField.value = pendingField.value;
+      restoredField.focus();
+      if (pendingField.selectionStart !== null) {
+        restoredField.setSelectionRange(pendingField.selectionStart, pendingField.selectionEnd);
+      }
     }
   }
 }
