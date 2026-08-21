@@ -43,6 +43,7 @@ const users = [
   { username: 'Yoseane', role: 'worker' },
   { username: 'Chris', role: 'worker' },
   { username: 'Wakary', role: 'worker' },
+  { username: 'ThomasV', role: 'worker' },
   { username: 'Christophe', role: 'worker' },
 
   // compta
