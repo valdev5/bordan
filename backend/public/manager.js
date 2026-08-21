@@ -495,14 +495,10 @@ function buildBonPrintHtml(item) {
     rdvRows.push([`Supplementaire ${index + 1}`, formatPrintDate(rdv.date), rdv.heure || '']);
   });
 
-  const hoursRows = (item.lignes || []).map((row) => [
-    formatPrintDate(row[0]),
-    row[1] || '',
-    formatPrintDate(row[2]),
-    row[3] || '',
-    row[4] || '',
-    row[5] || '',
-  ]);
+  const hoursRows = (item.lignes || []).map((row) => {
+    const [dateDebut, heureDebut, dateFin, heureFin, commentaire] = normalizeHeuresRow(row);
+    return [formatPrintDate(dateDebut), heureDebut, formatPrintDate(dateFin), heureFin, commentaire];
+  });
 
   const title = String(item.num_devis || '').startsWith('BT-') ? 'BT depannage' : 'Bon de travail';
 
@@ -572,7 +568,7 @@ function buildBonPrintHtml(item) {
     <div class="print-block">
       <h2>Feuille d heures</h2>
       ${buildPrintTable(
-        ['Date debut', 'Heure debut', 'Date fin', 'Heure fin', 'Heures', 'Commentaire'],
+        ['Date debut', 'Heure debut', 'Date fin', 'Heure fin', 'Commentaire'],
         hoursRows,
       )}
     </div>
@@ -753,23 +749,34 @@ if (showAllToggle) {
 }
 
 /* Bon rows */
-function addHeuresRow(values = ['', '', '', '', '', '']) {
+const HEURES_ROW_TYPES = ['date', 'time', 'date', 'time', 'text'];
+
+// Compat : les anciennes lignes avaient 6 colonnes (avec un champ "Heures" inutilise en position 4)
+function normalizeHeuresRow(values = []) {
+  if (values.length >= 6) {
+    return [values[0], values[1], values[2], values[3], values[5]];
+  }
+  return HEURES_ROW_TYPES.map((_, index) => values[index] || '');
+}
+
+function addHeuresRow(values = []) {
   if (!heuresBody) {
     return;
   }
 
+  const normalized = normalizeHeuresRow(values);
   const row = document.createElement('tr');
 
-  for (let index = 0; index < 6; index += 1) {
+  HEURES_ROW_TYPES.forEach((type, index) => {
     const cell = document.createElement('td');
     const input = document.createElement('input');
-    input.type = index % 2 === 0 ? 'date' : 'text';
-    input.value = values[index] || '';
+    input.type = type;
+    input.value = normalized[index] || '';
     input.style.width = '100%';
     input.style.border = '0';
     cell.appendChild(input);
     row.appendChild(cell);
-  }
+  });
 
   const deleteCell = document.createElement('td');
   const deleteButton = document.createElement('button');
