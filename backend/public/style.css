@@ -121,12 +121,35 @@ a:hover {
   padding: 8px 14px;
   border-radius: 999px;
   cursor: pointer;
+  transition: transform .18s ease, box-shadow .25s ease, border-color .25s ease, background .25s ease;
+}
+
+.tab:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  background: var(--panel);
+  box-shadow: 0 4px 14px rgba(14,165,233,.35), 0 0 10px rgba(45,212,255,.35);
+}
+
+.tab:active {
+  transform: translateY(0);
 }
 
 .tab.active {
   background: var(--primary);
   color: #001018;
   border-color: transparent;
+}
+
+.tab.active:hover {
+  background: var(--primary);
+  box-shadow: 0 4px 16px rgba(14,165,233,.55), 0 0 14px rgba(45,212,255,.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    transition: none;
+  }
 }
 
 /* ===== Boutons ===== */
