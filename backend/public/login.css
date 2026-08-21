@@ -90,6 +90,10 @@ body::after{
   .card{
     animation:none;
   }
+  .btn.primary::after{
+    animation:none;
+    display:none;
+  }
 }
 
 /* TITRE */
@@ -147,6 +151,40 @@ select:focus{
   color:#001018;
   border-color:transparent;
   font-weight:600;
+  position:relative;
+  overflow:hidden;
+  transition:transform .15s ease, box-shadow .25s ease;
+  box-shadow:0 0 0 rgba(45,212,255,0);
+}
+
+.btn.primary:hover{
+  transform:translateY(-1px);
+  box-shadow:0 0 14px rgba(14,165,233,.55), 0 0 28px rgba(45,212,255,.35);
+}
+
+.btn.primary:active{
+  transform:translateY(0) scale(.97);
+  box-shadow:0 0 6px rgba(14,165,233,.4);
+}
+
+/* Effet de balayage lumineux en boucle */
+.btn.primary::after{
+  content:'';
+  position:absolute;
+  top:0;
+  left:-60%;
+  width:40%;
+  height:100%;
+  background:linear-gradient(120deg, transparent, rgba(255,255,255,.55), transparent);
+  transform:skewX(-20deg);
+  animation:btn-sheen 3.2s ease-in-out infinite;
+  pointer-events:none;
+}
+
+@keyframes btn-sheen{
+  0%{left:-60%;}
+  35%{left:130%;}
+  100%{left:130%;}
 }
 
 /* MOBILE */
