@@ -4,11 +4,6 @@
   const btn = document.getElementById('btn-login');
   const usernameEl = document.getElementById('username');
   const passwordEl = document.getElementById('password');
-  const info = document.getElementById('target-info');
-
-  const target = sessionStorage.getItem('AFTER_LOGIN_TARGET') || 'manager.html';
-  info.textContent = `Après connexion, redirection prévue : ${target}`;
-
   async function go(){
     const username = (usernameEl.value || '').trim();
     const password = (passwordEl.value || '').trim();
