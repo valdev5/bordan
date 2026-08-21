@@ -94,10 +94,15 @@
           <div class="row"><label>Remarques chantier</label><textarea name="devis.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
         </div>
 
-        <div class="grid-2">
-          <div class="row"><label>Téléphone</label><input name="devis.tel" type="tel"></div>
-          <div class="row"><label>Objet / Objet de la demande</label><input name="devis.objet_demande" type="text"></div>
-        </div>
+        <div class="row">
+  <label>Téléphone</label>
+  <input name="devis.tel" type="tel">
+</div>
+
+<div class="row">
+  <label>Objet de la demande</label>
+  <input name="devis.objet_demande" type="text">
+</div>
 
         <div class="row"><label>Notes avant RDV</label><textarea name="devis.notes_avant_rdv" rows="3" placeholder="Infos à noter avant le rendez-vous…"></textarea></div>
 
@@ -109,6 +114,7 @@
               <label><input type="checkbox" class="devis-enc-team" value="Cédric M"><span>Cédric M</span></label>
               <label><input type="checkbox" class="devis-enc-team" value="Cédric A"><span>Cédric A</span></label>
               <label><input type="checkbox" class="devis-enc-team" value="Vivien"><span>Vivien</span></label>
+              <label><input type="checkbox" class="devis-enc-team" value="Karine"><span>Karine</span></label>
             </div>
           </div>
         </fieldset>
@@ -148,7 +154,12 @@
         <div class="row"><label>Adresse</label><input name="bon.client_adresse" type="text"></div>
         <div class="grid-2">
           <div class="row"><label>Code postal</label><input name="bon.client_code_postal" type="text"></div>
-          <div class="row"><label>Ville</label><input name="bon.client_ville" type="text"></div>
+          <div class="row">
+  <label>Ville</label>
+  <select name="bon.client_ville">
+    <option value="">Choisir une ville</option>
+  </select>
+</div>
         </div>
         <div class="row"><label>Travaux à réaliser</label><textarea name="bon.objet" rows="3" placeholder="Description du dépannage / chantier…"></textarea></div>
 

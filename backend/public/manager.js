@@ -1,366 +1,1110 @@
 /*************************************************
- * manager.js – Espace Chefs (complet)
- * - Retour auto au tableau après Enregistrer (devis/bon)
- * - Création auto du BT si devis Accepté + Acompte = oui (puis suppression du devis)
+ * manager.js - Espace Chefs
+ * - Retour auto au tableau apres enregistrement
+ * - Creation auto du BT si devis accepte + acompte
  * - Filtrage par chef via #show-all
- * - Chips intervenants (encadrant + équipe)
- * - Messagerie chantier côté encadrant (+ badge non lus)
+ * - Chips intervenants
+ * - Messagerie chantier cote encadrant
  **************************************************/
 
 /* Helpers DOM */
-window.$  = window.$  || ((s, r=document) => r.querySelector(s));
-window.$$ = window.$$ || ((s, r=document) => Array.from(r.querySelectorAll(s)));
-const today = () => (window.today ? window.today() : new Date().toISOString().slice(0,10));
+window.$ = window.$ || ((selector, root = document) => root.querySelector(selector));
+window.$$ = window.$$ || ((selector, root = document) => Array.from(root.querySelectorAll(selector)));
+const today = () => (window.today ? window.today() : new Date().toISOString().slice(0, 10));
 
 /* Auth */
-const CURRENT_USER = (window.Auth && Auth.guard) ? Auth.guard('manager') : null;
-if (!CURRENT_USER) { Auth?.logout?.(); }
-$('#whoami') && ($('#whoami').textContent = `Connecté : ${CURRENT_USER || '—'}`);
-$('#btn-logout')?.addEventListener('click', e=>{ e.preventDefault(); Auth?.logout?.(); });
-const whoShort = $('#whoami-short'); if (whoShort) whoShort.textContent = (CURRENT_USER||'—');
-setTimeout(() => { if (!getSelectedEncadrants().length && CURRENT_USER) setSelectedEncadrants([CURRENT_USER]); }, 0);
+const CURRENT_USER = window.Auth?.guard ? Auth.guard('manager') : null;
+
+if (!CURRENT_USER) {
+  Auth?.logout?.();
+}
+
+const whoami = $('#whoami');
+if (whoami) {
+  whoami.textContent = `Connecte : ${CURRENT_USER || '-'}`;
+}
+
+$('#btn-logout')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  Auth?.logout?.();
+});
+
+const whoShort = $('#whoami-short');
+if (whoShort) {
+  whoShort.textContent = CURRENT_USER || '-';
+}
 
 /* Store fallback */
-if (!window.Store){
+if (!window.Store) {
   window.Store = (() => {
-    const KEY_DEVIS='DEVIS', KEY_BONS='BONS';
-    const load = k => { try{return JSON.parse(localStorage.getItem(k)||'[]');}catch{return[];} };
-    const save = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
-    const upsertByField=(list,item,field,idForReplace)=>{
-      const i = idForReplace ? list.findIndex(x=>x.id===idForReplace) : list.findIndex(x=>x[field]===item[field]);
-      item.id = item.id || (Math.random().toString(36).slice(2)+Date.now().toString(36));
-      if(i>=0) list[i]=item; else list.push(item);
+    const KEY_DEVIS = 'DEVIS';
+    const KEY_BONS = 'BONS';
+
+    const load = (key) => {
+      try {
+        return JSON.parse(localStorage.getItem(key) || '[]');
+      } catch {
+        return [];
+      }
+    };
+
+    const save = (key, value) => {
+      localStorage.setItem(key, JSON.stringify(value));
+    };
+
+    const upsertByField = (list, item, field, idForReplace) => {
+      const index = idForReplace
+        ? list.findIndex((entry) => entry.id === idForReplace)
+        : list.findIndex((entry) => entry[field] === item[field]);
+
+      item.id = item.id || `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+
+      if (index >= 0) {
+        list[index] = item;
+      } else {
+        list.push(item);
+      }
+
       return list;
     };
-    return {KEY_DEVIS, KEY_BONS, load, save, upsertByField};
+
+    return { KEY_DEVIS, KEY_BONS, load, save, upsertByField };
   })();
 }
 
-/* Tabs */
-(function initTabs(){
-  const tabs  = $$('.tabs .tab');
-  const views = $$('main .view');
-  function showTab(name){
-    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    views.forEach(v => v.classList.toggle('show', v.id === 'tab-' + name));
-    if (name === 'board') { try { renderBoard(); } catch(e){} }
-    if (name === 'devis') setTimeout(initDevisDefaults, 0);
+/* State */
+const SHOW_ALL_KEY = 'SHOW_ALL_FOR_MANAGER';
+let showAll = localStorage.getItem(SHOW_ALL_KEY) === '1';
+let currentDevisId = null;
+let currentBonId = null;
+let currentBonNum = null;
+
+const heuresBody = $('#heures-body');
+const rdvPlusBody = $('#rdv-plus-body');
+const cityCache = new Map();
+
+/* Generic helpers */
+function cleanText(value) {
+  return String(value ?? '').trim();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function formatChatText(value) {
+  return escapeHtml(value).replace(/\n/g, '<br>');
+}
+
+function serializeNamedFields(prefix) {
+  const entries = [];
+
+  $$(`[name^="${prefix}."]`).forEach((field) => {
+    if (field.type === 'radio') {
+      if (field.checked) {
+        entries.push([field.name, field.value]);
+      }
+      return;
+    }
+
+    entries.push([
+      field.name,
+      field.type === 'checkbox' ? (field.checked ? 'oui' : 'non') : field.value,
+    ]);
+  });
+
+  return Object.fromEntries(entries);
+}
+
+function setFieldValue(name, value) {
+  const fields = $$(`[name="${name}"]`);
+  if (!fields.length) {
+    return;
   }
-  tabs.forEach(t => t.addEventListener('click', e=>{ e.preventDefault(); showTab(t.dataset.tab); }));
+
+  if (fields[0].type === 'radio') {
+    fields.forEach((field) => {
+      field.checked = field.value === String(value ?? '');
+    });
+    return;
+  }
+
+  const field = fields[0];
+
+  if (field.type === 'checkbox') {
+    field.checked = value === 'oui' || value === true || value === '1';
+    return;
+  }
+
+  if (
+    field.tagName === 'SELECT' &&
+    value &&
+    !Array.from(field.options).some((option) => option.value === value)
+  ) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    field.appendChild(option);
+  }
+
+  field.value = value ?? '';
+}
+
+function applyRawValues(raw = {}) {
+  Object.entries(raw).forEach(([name, value]) => {
+    setFieldValue(name, value);
+  });
+}
+
+function normalizeList(values) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [])
+        .map((value) => cleanText(value))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function getCheckedValues(selector) {
+  return normalizeList($$(selector).filter((field) => field.checked).map((field) => field.value));
+}
+
+function setCheckedValues(selector, values) {
+  const selected = new Set(normalizeList(values));
+  $$(selector).forEach((field) => {
+    field.checked = selected.has(field.value);
+  });
+}
+
+function getSelectedEncadrants() {
+  return getCheckedValues('.enc-team');
+}
+
+function setSelectedEncadrants(values) {
+  setCheckedValues('.enc-team', values);
+}
+
+function getSelectedDevisEncadrants() {
+  return getCheckedValues('.devis-enc-team');
+}
+
+function setSelectedDevisEncadrants(values) {
+  setCheckedValues('.devis-enc-team', values);
+}
+
+function makeDirectBTNum(list = Store.load(Store.KEY_BONS) || []) {
+  const base = today().replaceAll('-', '');
+  const count = list.filter((bon) => String(bon.num_devis || '').startsWith(`BT-${base}`)).length;
+  return `BT-${base}-${String(count + 1).padStart(3, '0')}`;
+}
+
+function makeDevisNum(list = Store.load(Store.KEY_DEVIS) || []) {
+  const base = today().replaceAll('-', '');
+  const count = list.filter((devis) => String(devis.num || '').startsWith(`DV-${base}`)).length;
+  return `DV-${base}-${String(count + 1).padStart(3, '0')}`;
+}
+
+function getEncadrantsForItem(item = {}) {
+  const raw = item.raw || {};
+  const direct = Array.isArray(item.encadrants) ? item.encadrants : [];
+  const rawMany = cleanText(raw['bon.encadrants'] || raw['devis.encadrants'])
+    .split('|')
+    .map((value) => cleanText(value))
+    .filter(Boolean);
+  const single = [item.encadrant, raw['bon.encadrant'], raw['devis.encadrant']];
+
+  return normalizeList([...direct, ...rawMany, ...single]);
+}
+
+function getPreferredEncadrants(item = {}) {
+  const encadrants = getEncadrantsForItem(item);
+  return encadrants.length ? encadrants : [item.encadrant || CURRENT_USER].filter(Boolean);
+}
+
+function belongsToChef(item) {
+  const chef = cleanText(CURRENT_USER);
+  if (!chef) {
+    return true;
+  }
+
+  const chefLower = chef.toLowerCase();
+  const encadrants = getEncadrantsForItem(item);
+  if (encadrants.some((name) => name.toLowerCase() === chefLower)) {
+    return true;
+  }
+
+  const team = Array.isArray(item.team) ? item.team : [];
+  return team.some((name) => cleanText(name).toLowerCase() === chefLower);
+}
+
+function removeDevisByNum(num) {
+  if (!num) {
+    return;
+  }
+
+  const allDevis = Store.load(Store.KEY_DEVIS);
+  Store.save(
+    Store.KEY_DEVIS,
+    allDevis.filter((devis) => devis.num !== num),
+  );
+}
+
+function displayPeopleChips(item) {
+  const encadrants = getEncadrantsForItem(item);
+  const team = normalizeList(Array.isArray(item.team) ? item.team : []);
+  const chips = [];
+
+  encadrants.forEach((name) => {
+    chips.push(`<span class="chip chip--lead" title="Encadrant">${escapeHtml(name)}</span>`);
+  });
+
+  const encadrantsLower = new Set(encadrants.map((name) => name.toLowerCase()));
+  team
+    .filter((name) => !encadrantsLower.has(name.toLowerCase()))
+    .forEach((name) => {
+      chips.push(`<span class="chip" title="Affectation">${escapeHtml(name)}</span>`);
+    });
+
+  return chips.length ? `<div class="chips-inline">${chips.join('')}</div>` : '';
+}
+
+function syncDevisRawFlags(devis) {
+  devis.raw = {
+    ...(devis.raw || {}),
+    'devis.signe': devis.signe || 'non',
+    'devis.acompte': devis.acompte || 'non',
+    'devis.refuse': devis.refuse || 'non',
+  };
+
+  return devis;
+}
+
+function formatPrintDate(value) {
+  const text = cleanText(value);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : text;
+}
+
+function formatPrintText(value) {
+  return escapeHtml(value).replace(/\n/g, '<br>');
+}
+
+function buildPrintRows(rows = []) {
+  return rows
+    .filter(([, value]) => cleanText(value))
+    .map(
+      ([label, value]) => `
+        <tr>
+          <th>${escapeHtml(label)}</th>
+          <td>${formatPrintText(value)}</td>
+        </tr>
+      `,
+    )
+    .join('');
+}
+
+function buildPrintTable(headers = [], rows = []) {
+  const safeRows = rows.filter(
+    (row) => Array.isArray(row) && row.some((cell) => cleanText(cell)),
+  );
+
+  if (!safeRows.length) {
+    return '<div class="small muted">Aucune donnee.</div>';
+  }
+
+  return `
+    <table class="print-table">
+      <thead>
+        <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr>
+      </thead>
+      <tbody>
+        ${safeRows
+          .map(
+            (row) => `
+              <tr>${row.map((cell) => `<td>${formatPrintText(cell)}</td>`).join('')}</tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function openPrintWindow(title, bodyHtml) {
+  const popup = window.open('', '_blank', 'width=960,height=780');
+
+  if (!popup) {
+    alert('Autorisez les popups pour imprimer le document.');
+    return;
+  }
+
+  popup.document.write(`
+    <!DOCTYPE html>
+    <html lang="fr">
+      <head>
+        <meta charset="utf-8">
+        <title>${escapeHtml(title)}</title>
+        <style>
+          body{font-family:Arial,sans-serif;margin:24px;color:#111827}
+          h1,h2{margin:0 0 10px}
+          h1{font-size:28px}
+          h2{font-size:18px;margin-top:24px}
+          .muted{color:#6b7280}
+          .print-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
+          .print-block{margin-top:18px}
+          .print-meta{font-size:14px}
+          .print-table{width:100%;border-collapse:collapse;margin-top:8px}
+          .print-table th,.print-table td{border:1px solid #d1d5db;padding:8px;vertical-align:top;text-align:left}
+          .print-table th{background:#f3f4f6;width:32%}
+          .toolbar{margin-bottom:16px;text-align:right}
+          .toolbar button{padding:10px 14px;border:0;background:#111827;color:#fff;border-radius:8px;cursor:pointer}
+          .small{font-size:13px}
+          @media print{
+            body{margin:12mm}
+            .toolbar{display:none}
+          }
+        </style>
+      </head>
+      <body>
+        <div class="toolbar">
+          <button onclick="window.print()">Imprimer</button>
+        </div>
+        ${bodyHtml}
+      </body>
+    </html>
+  `);
+  popup.document.close();
+
+  setTimeout(() => {
+    try {
+      popup.focus();
+      popup.print();
+    } catch (error) {
+      console.warn('Impossible de lancer l impression automatiquement', error);
+    }
+  }, 250);
+}
+
+function buildDevisPrintHtml(item) {
+  const raw = item.raw || {};
+  const encadrants = getPreferredEncadrants(item);
+  const chantierRows =
+    raw['devis.adresse_chantier_diff'] === 'oui'
+      ? buildPrintRows([
+          ['Adresse chantier', raw['devis.adresse_chantier']],
+          ['Code postal chantier', raw['devis.chantier_code_postal']],
+          ['Ville chantier', raw['devis.chantier_ville']],
+          ['Nom locataire', raw['devis.nom_locataire']],
+          ['Telephone locataire', raw['devis.tel_locataire']],
+          ['Remarques chantier', raw['devis.remarques_chantier']],
+        ])
+      : '';
+  const statut = [
+    item.signe === 'oui' ? 'Devis signe' : '',
+    item.acompte === 'oui' ? 'Acompte recu' : '',
+    item.refuse === 'oui' ? 'Refuse' : '',
+  ]
+    .filter(Boolean)
+    .join(' - ');
+
+  return `
+    <div class="print-head">
+      <div>
+        <h1>Devis</h1>
+        <div class="print-meta muted">Numero ${escapeHtml(item.num || '-')}</div>
+      </div>
+      <div class="print-meta">
+        <div><strong>Date :</strong> ${formatPrintText(formatPrintDate(raw['devis.date_demande'])) || '-'}</div>
+        <div><strong>Indice :</strong> ${formatPrintText(raw['devis.indice']) || '-'}</div>
+      </div>
+    </div>
+
+    <div class="print-block">
+      <h2>Client</h2>
+      <table class="print-table">
+        <tbody>
+          ${buildPrintRows([
+            ['Nom', raw['devis.nom']],
+            ['Numero client', raw['devis.num_client']],
+            ['Telephone', raw['devis.tel']],
+            ['Adresse', raw['devis.adresse']],
+            ['Code postal', raw['devis.code_postal']],
+            ['Ville', raw['devis.ville']],
+          ])}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="print-block">
+      <h2>Demande</h2>
+      <table class="print-table">
+        <tbody>
+          ${buildPrintRows([
+            ['Objet', raw['devis.objet_demande'] || item.objet],
+            ['Notes avant RDV', raw['devis.notes_avant_rdv']],
+            ['Encadrants', encadrants.join(', ')],
+            ['Statut', statut],
+          ])}
+        </tbody>
+      </table>
+    </div>
+
+    ${
+      chantierRows
+        ? `
+          <div class="print-block">
+            <h2>Chantier</h2>
+            <table class="print-table">
+              <tbody>${chantierRows}</tbody>
+            </table>
+          </div>
+        `
+        : ''
+    }
+  `;
+}
+
+function buildBonPrintHtml(item) {
+  const raw = item.raw || {};
+  const encadrants = getPreferredEncadrants(item);
+  const team = normalizeList(item.team || []);
+  const chantierRows =
+    raw['bon.adresse_chantier_diff'] === 'oui'
+      ? buildPrintRows([
+          ['Adresse chantier', raw['bon.adresse_chantier']],
+          ['Code postal chantier', raw['bon.chantier_code_postal']],
+          ['Ville chantier', raw['bon.chantier_ville']],
+          ['Nom locataire', raw['bon.nom_locataire']],
+          ['Telephone locataire', raw['bon.tel_locataire']],
+          ['Remarques chantier', raw['bon.remarques_chantier']],
+        ])
+      : '';
+  const rdvRows = [];
+
+  if (cleanText(raw['bon.rdv']) || cleanText(raw['bon.rdv_heure'])) {
+    rdvRows.push(['Initial', formatPrintDate(raw['bon.rdv']), raw['bon.rdv_heure'] || '']);
+  }
+
+  (item.rdv_plus || []).forEach((rdv, index) => {
+    rdvRows.push([`Supplementaire ${index + 1}`, formatPrintDate(rdv.date), rdv.heure || '']);
+  });
+
+  const hoursRows = (item.lignes || []).map((row) => [
+    formatPrintDate(row[0]),
+    row[1] || '',
+    formatPrintDate(row[2]),
+    row[3] || '',
+    row[4] || '',
+    row[5] || '',
+  ]);
+
+  const title = String(item.num_devis || '').startsWith('BT-') ? 'BT depannage' : 'Bon de travail';
+
+  return `
+    <div class="print-head">
+      <div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="print-meta muted">Numero ${escapeHtml(item.num_devis || '-')}</div>
+      </div>
+      <div class="print-meta">
+        <div><strong>Date :</strong> ${formatPrintText(formatPrintDate(raw['bon.date_devis'])) || '-'}</div>
+        <div><strong>Acompte :</strong> ${formatPrintText(raw['bon.acompte']) || '-'}</div>
+      </div>
+    </div>
+
+    <div class="print-block">
+      <h2>Client</h2>
+      <table class="print-table">
+        <tbody>
+          ${buildPrintRows([
+            ['Nom', raw['bon.client_nom'] || item.client],
+            ['Numero client', raw['bon.client_num']],
+            ['Telephone', raw['bon.client_tel']],
+            ['Adresse', raw['bon.client_adresse']],
+            ['Code postal', raw['bon.client_code_postal']],
+            ['Ville', raw['bon.client_ville']],
+          ])}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="print-block">
+      <h2>Intervention</h2>
+      <table class="print-table">
+        <tbody>
+          ${buildPrintRows([
+            ['Objet', raw['bon.objet'] || item.objet],
+            ['Equipe affectee', team.join(', ')],
+            ['Encadrants', encadrants.join(', ')],
+            ['Compta', item.admin || raw['bon.admin']],
+            ['Commande materiel', raw['bon.cmd_materiel']],
+            ['Reception materiel', raw['bon.recep_materiel']],
+            ['Notes avant RDV', raw['bon.notes_avant_rdv']],
+          ])}
+        </tbody>
+      </table>
+    </div>
+
+    ${
+      chantierRows
+        ? `
+          <div class="print-block">
+            <h2>Chantier</h2>
+            <table class="print-table">
+              <tbody>${chantierRows}</tbody>
+            </table>
+          </div>
+        `
+        : ''
+    }
+
+    <div class="print-block">
+      <h2>Rendez-vous</h2>
+      ${buildPrintTable(['Type', 'Date', 'Heure'], rdvRows)}
+    </div>
+
+    <div class="print-block">
+      <h2>Feuille d heures</h2>
+      ${buildPrintTable(
+        ['Date debut', 'Heure debut', 'Date fin', 'Heure fin', 'Heures', 'Commentaire'],
+        hoursRows,
+      )}
+    </div>
+  `;
+}
+
+function printDevisItem(item) {
+  openPrintWindow(`Devis ${item.num || ''}`, buildDevisPrintHtml(item));
+}
+
+function printBonItem(item) {
+  const label = String(item.num_devis || '').startsWith('BT-') ? 'BT depannage' : 'Bon de travail';
+  openPrintWindow(`${label} ${item.num_devis || ''}`, buildBonPrintHtml(item));
+}
+
+function buildCurrentDevisForPrint() {
+  const raw = serializeNamedFields('devis');
+  const encadrants = getSelectedDevisEncadrants();
+
+  return {
+    num: cleanText(raw['devis.num_devis']),
+    client: cleanText(raw['devis.nom']),
+    objet: cleanText(raw['devis.objet_demande'] || raw['devis.objet']),
+    signe: raw['devis.signe'] || 'non',
+    acompte: raw['devis.acompte'] || 'non',
+    refuse: raw['devis.refuse'] || 'non',
+    encadrants,
+    encadrant: encadrants[0] || '',
+    raw: {
+      ...raw,
+      'devis.encadrants': encadrants.join('|'),
+      'devis.encadrant': encadrants[0] || '',
+    },
+  };
+}
+
+function buildCurrentBonForPrint() {
+  const raw = serializeNamedFields('bon');
+  const team = getCheckedValues('.aff-team');
+  const bonAdmin = $('#bon-admin');
+  const encadrants = getSelectedEncadrants();
+
+  return {
+    num_devis: cleanText(raw['bon.num_devis']) || makeDirectBTNum(),
+    client: cleanText(raw['bon.client_nom']),
+    objet: cleanText(raw['bon.objet']),
+    lignes: collectHeuresRows(),
+    rdv_plus: collectRdvRows(),
+    team,
+    admin: cleanText(bonAdmin?.value),
+    encadrants,
+    encadrant: encadrants[0] || '',
+    raw: {
+      ...raw,
+      'bon.admin': cleanText(bonAdmin?.value),
+      'bon.encadrants': encadrants.join('|'),
+      'bon.encadrant': encadrants[0] || '',
+    },
+  };
+}
+
+function buildCurrentDirectBonForPrint() {
+  const raw = serializeNamedFields('direct');
+  const encadrants = getCheckedValues('.direct-enc-team');
+  const team = getCheckedValues('.direct-aff-team');
+  const num = cleanText(raw['direct.num_bt']) || makeDirectBTNum();
+  const urgence = cleanText(raw['direct.urgence']) || 'normal';
+  const objetBase = cleanText(raw['direct.objet']);
+  const objet = cleanText(`[DEPANNAGE ${urgence}] ${objetBase}`);
+
+  return {
+    num_devis: num,
+    client: cleanText(raw['direct.client_nom']),
+    objet,
+    lignes: [],
+    rdv_plus: [],
+    team,
+    admin: '',
+    encadrants,
+    encadrant: encadrants[0] || CURRENT_USER || '',
+    raw: {
+      'bon.num_devis': num,
+      'bon.date_devis': raw['direct.date'] || today(),
+      'bon.client_nom': raw['direct.client_nom'] || '',
+      'bon.client_tel': raw['direct.client_tel'] || '',
+      'bon.client_adresse': raw['direct.client_adresse'] || '',
+      'bon.client_code_postal': raw['direct.client_code_postal'] || '',
+      'bon.client_ville': raw['direct.client_ville'] || '',
+      'bon.objet': objet,
+      'bon.encadrants': encadrants.join('|'),
+      'bon.encadrant': encadrants[0] || CURRENT_USER || '',
+    },
+  };
+}
+
+function ensurePrintButtons() {
+  const targets = [
+    ['save-devis', 'print-devis', 'Imprimer', () => printDevisItem(buildCurrentDevisForPrint())],
+    ['save-bon', 'print-bon', 'Imprimer', () => printBonItem(buildCurrentBonForPrint())],
+    [
+      'save-bon-direct',
+      'print-bon-direct',
+      'Imprimer',
+      () => printBonItem(buildCurrentDirectBonForPrint()),
+    ],
+  ];
+
+  targets.forEach(([saveId, printId, label, handler]) => {
+    const saveButton = document.getElementById(saveId);
+    if (!saveButton || document.getElementById(printId)) {
+      return;
+    }
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = printId;
+    button.className = 'btn outline';
+    button.textContent = label;
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      handler();
+    });
+
+    saveButton.parentElement?.insertBefore(button, saveButton);
+  });
+}
+
+/* Tabs */
+function showTab(name) {
+  const tabs = $$('.tabs .tab');
+  const views = $$('main .view');
+
+  tabs.forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.tab === name);
+  });
+
+  views.forEach((view) => {
+    view.classList.toggle('show', view.id === `tab-${name}`);
+  });
+
+  if (name === 'board') {
+    try {
+      renderBoard();
+    } catch (error) {
+      console.warn('renderBoard a echoue', error);
+    }
+  }
+
+  if (name === 'devis') {
+    setTimeout(initDevisDefaults, 0);
+  }
+
+  if (name === 'bon-direct') {
+    setTimeout(initBonDirect, 0);
+  }
+}
+
+(function initTabs() {
+  $$('.tabs .tab').forEach((tab) => {
+    tab.addEventListener('click', (event) => {
+      event.preventDefault();
+      showTab(tab.dataset.tab);
+    });
+  });
+
   showTab('board');
 })();
 
 /* Filtre par chef */
-const SHOW_ALL_KEY = 'SHOW_ALL_FOR_MANAGER';
-let showAll = localStorage.getItem(SHOW_ALL_KEY) === '1';
 const showAllToggle = $('#show-all');
-if (showAllToggle){
+if (showAllToggle) {
   showAllToggle.checked = showAll;
-  showAllToggle.onchange = ()=>{
+  showAllToggle.onchange = () => {
     showAll = !!showAllToggle.checked;
-    localStorage.setItem(SHOW_ALL_KEY, showAll?'1':'0');
+    localStorage.setItem(SHOW_ALL_KEY, showAll ? '1' : '0');
     renderBoard();
   };
 }
-function belongsToChef(item){
-  const chef = (CURRENT_USER||'').trim();
-  if (!chef) return true;
-  const chefLower = chef.toLowerCase();
-  const encadrants = getEncadrantsForItem(item);
-  if (encadrants.some(n => n.toLowerCase() === chefLower)) return true;
-  const team = Array.isArray(item.team) ? item.team : [];
-  if (team.some(n => (n||'').toLowerCase() === chefLower)) return true;
-  return false;
+
+/* Bon rows */
+function addHeuresRow(values = ['', '', '', '', '', '']) {
+  if (!heuresBody) {
+    return;
+  }
+
+  const row = document.createElement('tr');
+
+  for (let index = 0; index < 6; index += 1) {
+    const cell = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = index % 2 === 0 ? 'date' : 'text';
+    input.value = values[index] || '';
+    input.style.width = '100%';
+    input.style.border = '0';
+    cell.appendChild(input);
+    row.appendChild(cell);
+  }
+
+  const deleteCell = document.createElement('td');
+  const deleteButton = document.createElement('button');
+  deleteButton.textContent = 'x';
+  deleteButton.className = 'btn danger';
+  deleteButton.onclick = () => row.remove();
+  deleteCell.appendChild(deleteButton);
+  row.appendChild(deleteCell);
+  heuresBody.appendChild(row);
 }
 
-const MANAGER_NAMES = ['Laurent', 'Cédric M', 'Cédric A', 'Vivien'];
+function resetHeuresRows(minRows = 0) {
+  if (!heuresBody) {
+    return;
+  }
 
-/* State & utils */
-let currentDevisId=null, currentBonId=null, currentBonNum=null;
-function getVal(n){ return ($(`[name="${n}"]`)?.value || '').trim(); }
-function normalizeList(arr){ return Array.from(new Set((Array.isArray(arr) ? arr : []).map(v => String(v||'').trim()).filter(Boolean))); }
-function getSelectedEncadrants(){ return normalizeList($$('.enc-team').filter(cb=>cb.checked).map(cb=>cb.value)); }
-function setSelectedEncadrants(names){ const set = new Set(normalizeList(names)); $$('.enc-team').forEach(cb => cb.checked = set.has(cb.value)); }
-function getSelectedDevisEncadrants(){ return normalizeList($$('.devis-enc-team').filter(cb=>cb.checked).map(cb=>cb.value)); }
-function setSelectedDevisEncadrants(names){ const set = new Set(normalizeList(names)); $$('.devis-enc-team').forEach(cb => cb.checked = set.has(cb.value)); }
-function makeDirectBTNum(list){ const base = today().replaceAll('-', ''); const count = (list||[]).filter(b => String(b.num_devis||'').startsWith('BT-'+base)).length; return `BT-${base}-${String(count + 1).padStart(3,'0')}`; }
-function getEncadrantsForItem(item){
-  const raw = item.raw || {};
-  const direct = Array.isArray(item.encadrants) ? item.encadrants : [];
-  const rawMany = String(raw['bon.encadrants'] || raw['devis.encadrants'] || '').split('|');
-  const single = [item.encadrant, raw['bon.encadrant'], raw['devis.encadrant']];
-  return normalizeList([...direct, ...rawMany, ...single]);
-}
-
-function removeDevisByNum(num){
-  if(!num) return;
-  const all = Store.load(Store.KEY_DEVIS);
-  Store.save(Store.KEY_DEVIS, all.filter(d => d.num !== num));
-}
-
-/* Chips intervenants (affichage) */
-function displayPeopleChips(item){
-  const encadrants = getEncadrantsForItem(item);
-  const team = normalizeList(Array.isArray(item.team) ? item.team : []);
-  const chips = [];
-  encadrants.forEach(name => chips.push(`<span class="chip chip--lead" title="Encadrant">${name}</span>`));
-  const encLower = new Set(encadrants.map(n => n.toLowerCase()));
-  team.filter(n => !encLower.has(n.toLowerCase())).forEach(n => chips.push(`<span class="chip" title="Affectation">${n}</span>`));
-  return chips.length ? `<div class="chips-inline">${chips.join('')}</div>` : '';
-}
-
-/* Defaults devis */
-function initDevisDefaults(){
-  const ddate = $('#ddate'); if (ddate && !ddate.value) ddate.value = today();
-  const dnum  = $('#dnum');
-  if (dnum && !dnum.value) {
-    const base = today().replaceAll('-', '');
-    const list = Store.load(Store.KEY_DEVIS) || [];
-    const countToday = list.filter(d => (d.num||'').startsWith('DV-'+base)).length;
-    dnum.value = `DV-${base}-${String(countToday + 1).padStart(3,'0')}`;
+  heuresBody.innerHTML = '';
+  for (let index = 0; index < minRows; index += 1) {
+    addHeuresRow();
   }
 }
-document.readyState !== 'loading' ? initDevisDefaults() : document.addEventListener('DOMContentLoaded', initDevisDefaults);
 
-/* ===== Messagerie (helpers encadrant) ===== */
-function tsOf(m){
-  if (!m) return 0;
-  if (typeof m.ts === 'number') return m.ts;
-  const t = Date.parse(m.date || '');
-  return isNaN(t) ? 0 : t;
+function loadHeuresRows(rows = []) {
+  resetHeuresRows(0);
+  rows.forEach((row) => addHeuresRow(row));
+
+  if (!heuresBody?.children.length) {
+    resetHeuresRows(3);
+  }
 }
-function markChatSeen(b, who){
-  const allB = Store.load(Store.KEY_BONS);
-  const idx  = allB.findIndex(x=>x.id===b.id);
-  if(idx < 0) return;
-  const copy = {...allB[idx]};
-  copy.chatSeen = copy.chatSeen || {};
-  copy.chatSeen[who] = Date.now();
-  allB[idx] = copy;
-  Store.save(Store.KEY_BONS, allB);
+
+function collectHeuresRows() {
+  return [...(heuresBody?.querySelectorAll('tr') || [])].map((row) =>
+    [...row.querySelectorAll('input')].map((input) => input.value),
+  );
 }
-function countUnreadFor(b, who){
-  const seenTs = (b.chatSeen && b.chatSeen[who]) ? b.chatSeen[who] : 0;
-  const arr = Array.isArray(b.chat) ? b.chat : [];
-  return arr.filter(m => (m.from || '') !== who && tsOf(m) > seenTs).length;
+
+function addRDV(date = '', heure = '') {
+  if (!rdvPlusBody) {
+    return;
+  }
+
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td><input type="date" value="${escapeHtml(date)}"></td>
+    <td><input type="time" value="${escapeHtml(heure)}"></td>
+    <td><button class="btn danger" type="button">x</button></td>
+  `;
+
+  row.querySelector('button').onclick = () => row.remove();
+  rdvPlusBody.appendChild(row);
 }
-function initManagerChat(b){
+
+function resetRdvRows() {
+  if (rdvPlusBody) {
+    rdvPlusBody.innerHTML = '';
+  }
+}
+
+function loadRdvRows(rows = []) {
+  resetRdvRows();
+  rows.forEach((row) => addRDV(row.date, row.heure));
+}
+
+function collectRdvRows() {
+  return [...(rdvPlusBody?.querySelectorAll('tr') || [])].map((row) => {
+    const [date, heure] = [...row.querySelectorAll('input')].map((input) => input.value);
+    return { date, heure };
+  });
+}
+
+$('#add-row')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  addHeuresRow();
+});
+
+$('#add-rdv')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  addRDV();
+});
+
+if (heuresBody && !heuresBody.children.length) {
+  resetHeuresRows(3);
+}
+
+/* Defaults */
+function initDevisDefaults() {
+  const dateField = $('#ddate');
+  if (dateField && !dateField.value) {
+    dateField.value = today();
+  }
+
+  const numField = $('#dnum');
+  if (numField && !numField.value) {
+    numField.value = makeDevisNum();
+  }
+}
+
+function initBonDirect() {
+  const numField = $('[name="direct.num_bt"]');
+  const dateField = $('[name="direct.date"]');
+
+  if (numField && !numField.value) {
+    numField.value = makeDirectBTNum();
+  }
+
+  if (dateField && !dateField.value) {
+    dateField.value = today();
+  }
+
+  $$('.direct-enc-team').forEach((field) => {
+    field.checked = field.value === CURRENT_USER;
+  });
+}
+
+document.readyState !== 'loading'
+  ? initDevisDefaults()
+  : document.addEventListener('DOMContentLoaded', initDevisDefaults);
+
+setTimeout(() => {
+  if (!getSelectedEncadrants().length && CURRENT_USER) {
+    setSelectedEncadrants([CURRENT_USER]);
+  }
+}, 0);
+
+/* Form helpers */
+function openDevis(item) {
+  applyRawValues(item.raw || {});
+  setSelectedDevisEncadrants(getPreferredEncadrants(item));
+  currentDevisId = item.id;
+  showTab('devis');
+  initDevisDefaults();
+}
+
+function openBon(item) {
+  applyRawValues(item.raw || {});
+  loadHeuresRows(item.lignes || []);
+  loadRdvRows(item.rdv_plus || []);
+  setCheckedValues('.aff-team', item.team || []);
+  setSelectedEncadrants(getPreferredEncadrants(item));
+
+  const bonAdmin = $('#bon-admin');
+  if (bonAdmin) {
+    bonAdmin.value = item.raw?.['bon.admin'] || item.admin || '';
+  }
+
+  currentBonId = item.id;
+  currentBonNum = item.num_devis;
+
+  showTab('bon');
+  initManagerChat(item);
+  markChatSeen(item, cleanText(CURRENT_USER));
+  renderBoard();
+}
+
+function prepareNewBonForm() {
+  currentBonId = null;
+  currentBonNum = null;
+
+  $$('[name^="bon."]').forEach((field) => {
+    if (field.type === 'checkbox' || field.type === 'radio') {
+      field.checked = false;
+    } else {
+      field.value = '';
+    }
+  });
+
+  const bonAdmin = $('#bon-admin');
+  if (bonAdmin) {
+    bonAdmin.value = '';
+  }
+
+  setFieldValue('bon.num_devis', makeDirectBTNum());
+  setFieldValue('bon.date_devis', today());
+  setCheckedValues('.aff-team', []);
+  setSelectedEncadrants([CURRENT_USER].filter(Boolean));
+  resetHeuresRows(3);
+  resetRdvRows();
+}
+
+function resetDirectBonForm() {
+  $$('[name^="direct."]').forEach((field) => {
+    if (field.type === 'checkbox' || field.type === 'radio') {
+      field.checked = false;
+    } else {
+      field.value = '';
+    }
+  });
+
+  setCheckedValues('.direct-aff-team', []);
+  initBonDirect();
+}
+
+document.readyState !== 'loading'
+  ? ensurePrintButtons()
+  : document.addEventListener('DOMContentLoaded', ensurePrintButtons);
+
+/* Chat */
+function tsOf(message) {
+  if (!message) {
+    return 0;
+  }
+
+  if (typeof message.ts === 'number') {
+    return message.ts;
+  }
+
+  const timestamp = Date.parse(message.date || '');
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function markChatSeen(bon, who) {
+  const allBons = Store.load(Store.KEY_BONS);
+  const index = allBons.findIndex((entry) => entry.id === bon.id);
+
+  if (index < 0) {
+    return;
+  }
+
+  const updated = { ...allBons[index] };
+  updated.chatSeen = updated.chatSeen || {};
+  updated.chatSeen[who] = Date.now();
+  allBons[index] = updated;
+  Store.save(Store.KEY_BONS, allBons);
+}
+
+function countUnreadFor(bon, who) {
+  const seenTs = bon.chatSeen?.[who] || 0;
+  const messages = Array.isArray(bon.chat) ? bon.chat : [];
+  return messages.filter((message) => (message.from || '') !== who && tsOf(message) > seenTs).length;
+}
+
+function initManagerChat(bon) {
   const log = $('#mgr-chat-log');
   const input = $('#mgr-chat-input');
-  const sendBtn = $('#mgr-chat-send');
-  if(!log || !input || !sendBtn) return;
+  const sendButton = $('#mgr-chat-send');
 
-  function renderLog(){
-    const fresh = Store.load(Store.KEY_BONS).find(x=>x.id===b.id) || b;
-    const chat = Array.isArray(fresh.chat) ? fresh.chat : [];
-    const last = chat.slice(-30);
-    log.innerHTML = last.map(m => `
-      <div class="chat-line">
-        <strong>${m.from || '?'}</strong>
-        <span class="small muted">${m.date || new Date(m.ts || Date.now()).toLocaleString()}</span><br>
-        ${m.text || ''}
-      </div>
-    `).join('') || '<div class="small muted">Aucun message.</div>';
+  if (!log || !input || !sendButton) {
+    return;
+  }
+
+  const who = cleanText(CURRENT_USER) || 'Encadrant';
+
+  function renderLog() {
+    const freshBon = Store.load(Store.KEY_BONS).find((entry) => entry.id === bon.id) || bon;
+    const chat = Array.isArray(freshBon.chat) ? freshBon.chat : [];
+    const lastMessages = chat.slice(-30);
+
+    log.innerHTML =
+      lastMessages
+        .map(
+          (message) => `
+            <div class="chat-line">
+              <strong>${escapeHtml(message.from || '?')}</strong>
+              <span class="small muted">${escapeHtml(
+                message.date || new Date(message.ts || Date.now()).toLocaleString(),
+              )}</span><br>
+              ${formatChatText(message.text || '')}
+            </div>
+          `,
+        )
+        .join('') || '<div class="small muted">Aucun message.</div>';
   }
 
   renderLog();
+  markChatSeen(bon, who);
 
-  const who = (CURRENT_USER || '').trim() || 'Encadrant';
-  markChatSeen(b, who);
+  sendButton.onclick = () => {
+    const text = cleanText(input.value);
+    if (!text) {
+      return;
+    }
 
-  sendBtn.onclick = ()=>{
-    const text = (input.value || '').trim();
-    if (!text) return;
-    const allB = Store.load(Store.KEY_BONS);
-    const idx  = allB.findIndex(x=>x.id===b.id);
-    if (idx < 0) { alert('Bon introuvable.'); return; }
-    const copy = {...allB[idx]};
-    copy.chat = Array.isArray(copy.chat) ? copy.chat : [];
+    const allBons = Store.load(Store.KEY_BONS);
+    const index = allBons.findIndex((entry) => entry.id === bon.id);
+
+    if (index < 0) {
+      alert('Bon introuvable.');
+      return;
+    }
+
+    const updated = { ...allBons[index] };
+    updated.chat = Array.isArray(updated.chat) ? updated.chat : [];
+
     const now = Date.now();
-    copy.chat.push({ from: who, text, ts: now, date: new Date(now).toLocaleString() });
-    copy.chatSeen = copy.chatSeen || {};
-    copy.chatSeen[who] = now; // l’expéditeur a vu
-    allB[idx] = copy; Store.save(Store.KEY_BONS, allB);
+    updated.chat.push({
+      from: who,
+      text,
+      ts: now,
+      date: new Date(now).toLocaleString(),
+    });
+
+    updated.chatSeen = updated.chatSeen || {};
+    updated.chatSeen[who] = now;
+    allBons[index] = updated;
+    Store.save(Store.KEY_BONS, allBons);
+
     input.value = '';
     renderLog();
-    renderBoard(); // mettre à jour badge non lus
+    renderBoard();
   };
 }
 
-/* ===== DEVIS ===== */
-$('#save-devis')?.addEventListener('click', ()=>{
-  const raw = Object.fromEntries(
-    $$('[name^="devis."]').map(el => [el.name, el.type==='checkbox' ? (el.checked?'oui':'non') : el.value])
-  );
+/* Auto creation BT depuis devis */
+function autoCreateOrUpdateBonFromDevis(devis) {
+  const raw = devis.raw || {};
+  const list = Store.load(Store.KEY_BONS);
+  const existing = list.find((bon) => bon.num_devis === devis.num);
+  const encadrants = normalizeList([
+    ...(existing?.encadrants || []),
+    ...(devis.encadrants || []),
+    devis.encadrant,
+    existing?.encadrant,
+  ]);
+  const objet = raw['devis.objet_demande'] || raw['devis.objet'] || '';
 
-  let pipeline = 'd-attente-appel';
-  const listDevisAll = Store.load(Store.KEY_DEVIS);
-  const curr = listDevisAll.find(d=>d.num===raw['devis.num_devis']);
-  if (curr?.pipeline) pipeline = curr.pipeline;
-
-  const devisEncadrants = getSelectedDevisEncadrants();
-
-  const item = {
-    id: currentDevisId || undefined, type:'devis',
-    num: getVal('devis.num_devis'),
-    client: getVal('devis.nom'),
-    objet: getVal('devis.objet_demande') || getVal('devis.objet'),
-    signe: getVal('devis.signe')||'non',
-    acompte: getVal('devis.acompte')||'non',
-    refuse: getVal('devis.refuse')||'non',
-    encadrants: devisEncadrants,
-    encadrant: devisEncadrants[0] || getVal('devis.encadrant') || '',
-    pipeline,
-    raw: { ...raw, 'devis.encadrants': devisEncadrants.join('|'), 'devis.encadrant': devisEncadrants[0] || '' }
-  };
-
-  if (!item.num) { alert('Le numéro de devis est requis.'); return; }
-  const exists = listDevisAll.some(d => d.num === item.num && d.id !== currentDevisId);
-  if (exists) { alert('Un devis avec ce numéro existe déjà.'); return; }
-
-  Store.save(Store.KEY_DEVIS, Store.upsertByField(listDevisAll, item, 'num', currentDevisId));
-
-  if (item.signe==='oui' && item.acompte==='oui' && item.refuse!=='oui') {
-    autoCreateOrUpdateBonFromDevis(item);
-    removeDevisByNum(item.num);
-  }
-
-  currentDevisId = null;
-  alert('Devis enregistré.');
-  renderBoard();
-  document.querySelector('.tabs .tab[data-tab="board"]')?.click();
-});
-
-$('#load-devis')?.addEventListener('click', ()=>{
-  const num = prompt('N° de devis à charger ?'); if(!num) return;
-  const found = Store.load(Store.KEY_DEVIS).find(d=>d.num===num);
-  if(!found){ alert('Devis introuvable.'); return; }
-  Object.entries(found.raw).forEach(([k,v])=>{
-    const el=$(`[name="${k}"]`); if(!el) return;
-    if(el.type==='checkbox') el.checked = (v==='oui'); else el.value=v;
-  });
-  setSelectedDevisEncadrants(getEncadrantsForItem(found).length ? getEncadrantsForItem(found) : [found.encadrant || CURRENT_USER].filter(Boolean));
-  currentDevisId = found.id;
-  document.querySelector('.tabs .tab[data-tab="devis"]')?.click();
-});
-
-/* ===== BON ===== */
-const heuresBody = $('#heures-body');
-function addHeuresRow(values=['','','','','','']){
-  const tr=document.createElement('tr');
-  for(let i=0;i<6;i++){
-    const td=document.createElement('td'); const ip=document.createElement('input');
-    ip.type=(i%2===0)?'date':'text'; ip.value=values[i]||''; ip.style.width='100%'; ip.style.border='0';
-    td.appendChild(ip); tr.appendChild(td);
-  }
-  const tdDel=document.createElement('td'); const del=document.createElement('button');
-  del.textContent='✕'; del.className='btn danger'; del.onclick=()=>tr.remove();
-  tdDel.appendChild(del); tr.appendChild(tdDel); heuresBody?.appendChild(tr);
-}
-$('#add-row')?.addEventListener('click',e=>{e.preventDefault();addHeuresRow();});
-if(heuresBody && !heuresBody.children.length){ for(let i=0;i<3;i++) addHeuresRow(); }
-
-const rdvPlusBody = $('#rdv-plus-body');
-function addRDV(date='', heure=''){
-  if(!rdvPlusBody) return;
-  const tr=document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="date" value="${date}"></td>
-    <td><input type="time" value="${heure}"></td>
-    <td><button class="btn danger" type="button">✕</button></td>`;
-  tr.querySelector('button').onclick=()=>tr.remove();
-  rdvPlusBody.appendChild(tr);
-}
-$('#add-rdv')?.addEventListener('click', e=>{ e.preventDefault(); addRDV(); });
-
-$('#save-bon')?.addEventListener('click', ()=>{
-  const lignes=[...heuresBody?.querySelectorAll('tr')||[]].map(tr=>[...tr.querySelectorAll('input')].map(i=>i.value));
-  const rdv_plus=[...rdvPlusBody?.querySelectorAll('tr')||[]].map(tr=>{
-    const [d,h]=[...tr.querySelectorAll('input')].map(i=>i.value); return {date:d, heure:h};
-  });
-  const raw = Object.fromEntries($$('[name^="bon."]').map(el=>[
-    el.name, (el.type==='checkbox') ? (el.checked?'oui':'non') : el.value
-  ]));
-
-  const listB = Store.load(Store.KEY_BONS);
-  if (!raw['bon.num_devis']) raw['bon.num_devis'] = makeDirectBTNum(listB);
-  const curr = currentBonId ? listB.find(b=>b.id===currentBonId) : listB.find(b=>b.num_devis===raw['bon.num_devis']);
-
-  const team = normalizeList($$('.aff-team').filter(cb=>cb.checked).map(cb=>cb.value));
-  const admin = $('#bon-admin')?.value || curr?.admin || '';
-  const encadrants = normalizeList([...(getSelectedEncadrants()), ...(curr?.encadrants || []), ...(curr?.encadrant ? [curr.encadrant] : [])]);
-
-  const item = {
-    id: currentBonId || undefined, type:'bon',
-    num_devis: raw['bon.num_devis'],
-    client:getVal('bon.client_nom'),
-    objet:getVal('bon.objet'),
-    lignes,
-    rdv_plus,
-    pipe: curr?.pipe || 'b-pret',
-    status: (curr?.status)|| (curr?.pipe==='b-facturer'?'facturer':'bons'),
-    team: team.length?team:normalizeList(curr?.team||[]),
-    admin,
+  const bon = {
+    id: existing?.id,
+    type: 'bon',
+    num_devis: devis.num || '',
+    client: devis.client || raw['devis.nom'] || '',
+    objet,
+    pipe: existing?.pipe || 'b-pret',
+    status: existing?.status || 'bons',
+    team: existing?.team || [],
+    admin: existing?.admin || '',
     encadrants,
-    encadrant: encadrants[0] || curr?.encadrant || '',
-    raw: { ...raw, 'bon.encadrants': encadrants.join('|'), 'bon.encadrant': encadrants[0] || '' }
-  };
-
-  Store.save(Store.KEY_BONS, Store.upsertByField(listB, item, 'num_devis', currentBonId));
-
-  currentBonId=null; currentBonNum=item.num_devis;
-  alert('Bon enregistré.');
-  renderBoard();
-  document.querySelector('.tabs .tab[data-tab="board"]')?.click();
-});
-
-$('#load-bon')?.addEventListener('click', ()=>{
-  const num=prompt('N° de devis rattaché au bon ?'); if(!num) return;
-  const found = Store.load(Store.KEY_BONS).find(b=>b.num_devis===num);
-  if(!found){ alert('Bon introuvable.'); return; }
-  Object.entries(found.raw).forEach(([k,v])=>{
-    const el=$(`[name="${k}"]`); if(!el) return;
-    if(el.type==='checkbox') el.checked=(v==='oui'); else el.value=v;
-  });
-  heuresBody && (heuresBody.innerHTML=''); (found.lignes||[]).forEach(r=>addHeuresRow(r));
-  if(heuresBody && !heuresBody.children.length){ for(let i=0;i<3;i++) addHeuresRow(); }
-  rdvPlusBody && (rdvPlusBody.innerHTML=''); (found.rdv_plus||[]).forEach(r=>addRDV(r.date,r.heure));
-  $$('.aff-team').forEach(cb=>cb.checked=(found.team||[]).includes(cb.value));
-  setSelectedEncadrants(getEncadrantsForItem(found).length ? getEncadrantsForItem(found) : [found.encadrant || CURRENT_USER].filter(Boolean));
-  if(found.raw?.['bon.admin']) $('#bon-admin').value=found.raw['bon.admin'];
-
-  currentBonId=found.id; currentBonNum=found.num_devis;
-  document.querySelector('.tabs .tab[data-tab="bon"]')?.click();
-
-  // initialiser la messagerie sur l’onglet Bon + marquer "vu"
-  initManagerChat(found);
-  markChatSeen(found, (CURRENT_USER||'').trim());
-  renderBoard(); // refresh badge non lus
-});
-
-/* Auto-création BT depuis Devis */
-function autoCreateOrUpdateBonFromDevis(d){
-  const raw=d.raw||{}; const list=Store.load(Store.KEY_BONS);
-  const existing=list.find(b=>b.num_devis===d.num);
-
-  const bon={
-    id: existing?.id, type:'bon',
-    num_devis:d.num||'',
-    client:d.client||raw['devis.nom']||'',
-    objet: raw['devis.objet']||raw['devis.objet_demande']||'',
-    pipe: existing?.pipe||'b-pret',
-    status: existing?.status||'bons',
-    team: existing?.team||[],
-    admin: existing?.admin||'',
-    encadrants: normalizeList([...(existing?.encadrants||[]), ...(d.encadrants||[]), d.encadrant, existing?.encadrant].filter(Boolean)),
-    encadrant: (normalizeList([...(existing?.encadrants||[]), ...(d.encadrants||[]), d.encadrant, existing?.encadrant].filter(Boolean))[0]) || '',
+    encadrant: encadrants[0] || '',
     chat: existing?.chat || [],
     chatSeen: existing?.chatSeen || {},
     raw: {
-      ...(existing?.raw||{}),
-      'bon.num_devis': d.num || '',
+      ...(existing?.raw || {}),
+      'bon.num_devis': devis.num || '',
       'bon.date_devis': raw['devis.date_demande'] || '',
-      'bon.acompte': (d.acompte==='oui')?'1':'',
+      'bon.acompte': devis.acompte === 'oui' ? '1' : '',
       'bon.client_nom': raw['devis.nom'] || '',
       'bon.client_num': raw['devis.num_client'] || '',
       'bon.client_adresse': raw['devis.adresse'] || '',
@@ -368,284 +1112,178 @@ function autoCreateOrUpdateBonFromDevis(d){
       'bon.client_ville': raw['devis.ville'] || '',
       'bon.client_tel': raw['devis.tel'] || '',
       'bon.adresse_chantier_diff': raw['devis.adresse_chantier_diff'] || 'non',
-      'bon.adresse_chantier':      raw['devis.adresse_chantier'] || '',
-      'bon.chantier_code_postal':  raw['devis.chantier_code_postal'] || '',
-      'bon.chantier_ville':        raw['devis.chantier_ville'] || '',
-      'bon.nom_locataire':         raw['devis.nom_locataire'] || '',
-      'bon.tel_locataire':         raw['devis.tel_locataire'] || '',
-      'bon.remarques_chantier':    raw['devis.remarques_chantier'] || '',
-      'bon.objet':                 raw['devis.objet_demande'] || '',
-      'bon.notes_avant_rdv':       raw['devis.notes_avant_rdv'] || '',
-      'bon.encadrants': normalizeList([...(existing?.encadrants||[]), ...(d.encadrants||[]), d.encadrant, existing?.encadrant].filter(Boolean)).join('|'),
-      'bon.encadrant': normalizeList([...(existing?.encadrants||[]), ...(d.encadrants||[]), d.encadrant, existing?.encadrant].filter(Boolean))[0] || ''
-    }
+      'bon.adresse_chantier': raw['devis.adresse_chantier'] || '',
+      'bon.chantier_code_postal': raw['devis.chantier_code_postal'] || '',
+      'bon.chantier_ville': raw['devis.chantier_ville'] || '',
+      'bon.nom_locataire': raw['devis.nom_locataire'] || '',
+      'bon.tel_locataire': raw['devis.tel_locataire'] || '',
+      'bon.remarques_chantier': raw['devis.remarques_chantier'] || '',
+      'bon.objet': objet,
+      'bon.notes_avant_rdv': raw['devis.notes_avant_rdv'] || '',
+      'bon.encadrants': encadrants.join('|'),
+      'bon.encadrant': encadrants[0] || '',
+    },
   };
+
   Store.save(Store.KEY_BONS, Store.upsertByField(list, bon, 'num_devis', existing?.id));
-  removeDevisByNum(d.num); // éviter doublon
+  removeDevisByNum(devis.num);
 }
 
-/* ===== Board ===== */
-function renderBoard(){
-  const C={
-    'd-attente-appel': $('#d-attente-appel'),
-    'd-rdv-pris': $('#d-rdv-pris'),
-    'd-a-saisir': $('#d-a-saisir'),
-    'd-attente-retour': $('#d-attente-retour'),
-    'd-accepte': $('#d-accepte'),
-    'd-refuse': $('#d-refuse'),
-    'b-pret': $('#b-pret'),
-    'b-affect': $('#b-affect'),
-    'b-encours': $('#b-encours'),
-    'b-facturer': $('#b-facturer'),
-    'b-archive': $('#b-archive')
-  };
-  Object.values(C).filter(Boolean).forEach(el=>el.innerHTML='');
-
-  // Devis
-  const devisRaw=Store.load(Store.KEY_DEVIS);
-  const devisList=devisRaw.map(d=>({
-    ...d,
-    pipeline: d.pipeline || (d.refuse==='oui'?'d-refuse':
-      (d.signe==='oui' && d.acompte==='oui'?'d-accepte':
-        (d.raw?.['devis.rdv_date']?'d-rdv-pris':'d-attente-appel')))
-  }));
-  Store.save(Store.KEY_DEVIS, devisList);
-
-  const devisListVisible = showAll ? devisList : devisList.filter(belongsToChef);
-  devisListVisible.forEach(d=>{
-    const col = C[d.pipeline]; if(!col) return;
-    const card=document.createElement('div'); card.className='card';
-    card.innerHTML=`
-      <div class="line1"><strong>${d.client||'Client ?'}</strong><span class="small">Devis n° ${d.num||'-'}</span></div>
-      ${displayPeopleChips(d)}
-      <div class="small" style="margin:4px 0">${d.objet||''}</div>
-      <div class="row" style="margin-top:8px">
-        <label>Étape</label>
-        <select class="pipe">
-          <option value="d-attente-appel">Attente d’appel / RDV</option>
-          <option value="d-rdv-pris">RDV pris</option>
-          <option value="d-a-saisir">À saisir</option>
-          <option value="d-attente-retour">Saisi / attente retour</option>
-          <option value="d-accepte">Accepté</option>
-          <option value="d-refuse">Refusé</option>
-        </select>
-      </div>
-      <div class="grid-3 small" style="margin-top:6px">
-        <label><input type="checkbox" class="chk-signe" ${d.signe==='oui'?'checked':''}> signé</label>
-        <label><input type="checkbox" class="chk-acompte" ${d.acompte==='oui'?'checked':''}> acompte</label>
-      </div>
-      <div class="actions" style="margin-top:6px">
-        <button class="btn primary open">Ouvrir</button>
-        <button class="btn danger delete">🗑 Supprimer</button>
-      </div>`;
-    const pipeSel=card.querySelector('.pipe'); pipeSel.value=d.pipeline;
-    pipeSel.onchange = () => {
-      d.pipeline = pipeSel.value;
-      const updated = devisList.map(x => x.id === d.id ? d : x);
-      Store.save(Store.KEY_DEVIS, updated);
-      if (d.pipeline === 'd-accepte' && d.acompte === 'oui') {
-        autoCreateOrUpdateBonFromDevis(d);
-        removeDevisByNum(d.num);
-        renderBoard(); return;
-      }
-      renderBoard();
-    };
-    card.querySelector('.chk-signe').onchange=(e)=>{ d.signe=e.target.checked?'oui':'non'; Store.save(Store.KEY_DEVIS, devisList); };
-    card.querySelector('.chk-acompte').onchange=(e)=>{
-      d.acompte=e.target.checked?'oui':'non'; Store.save(Store.KEY_DEVIS, devisList);
-      if(d.pipeline==='d-accepte' && d.acompte==='oui'){
-        autoCreateOrUpdateBonFromDevis(d);
-        removeDevisByNum(d.num);
-        renderBoard(); return;
-      }
-    };
-    card.querySelector('.open').onclick=()=>{ Object.entries(d.raw||{}).forEach(([k,v])=>{ const el=$(`[name="${k}"]`); if(!el) return; el.type==='checkbox' ? (el.checked=(v==='oui')) : (el.value=v); });
-      setSelectedDevisEncadrants(getEncadrantsForItem(d).length ? getEncadrantsForItem(d) : [d.encadrant || CURRENT_USER].filter(Boolean)); currentDevisId=d.id; document.querySelector('.tabs .tab[data-tab="devis"]')?.click(); initDevisDefaults(); };
-    card.querySelector('.delete').onclick=()=>{ if(confirm(`Supprimer le devis n° ${d.num||''} ?`)){ Store.save(Store.KEY_DEVIS, devisList.filter(x=>x.id!==d.id)); renderBoard(); } };
-    col.appendChild(card);
-  });
-
-  // Bons
-  const bonsList=Store.load(Store.KEY_BONS).map(b=>({...b, pipe: b.pipe || (b.status==='facturer'?'b-facturer':'b-pret')}));
-  Store.save(Store.KEY_BONS, bonsList);
-  const bonsListVisible = showAll ? bonsList : bonsList.filter(belongsToChef);
-
-  bonsListVisible.forEach(b=>{
-    const col = C[b.archived?'b-archive':b.pipe]; if(!col) return;
-    const unread = countUnreadFor(b, (CURRENT_USER||'').trim());
-    const unreadBadge = unread > 0 ? `<span class="badge" title="Messages non lus">${unread} nouveau${unread>1?'x':''}</span>` : '';
-
-    const card=document.createElement('div'); card.className='card';
-    card.innerHTML=`
-      <div class="line1"><strong>${b.client||'Client ?'}</strong><span class="small">${String(b.num_devis||'').startsWith('BT-')?'BT n°':'Devis n°'} ${b.num_devis||'-'}</span></div>
-      ${displayPeopleChips(b)}
-      <div class="small" style="margin:4px 0">${(b.objet||'').slice(0,100)}</div>
-      <div class="small" style="margin-bottom:6px">${unreadBadge}</div>
-      <div class="row" style="margin-top:6px">
-        <label>Étape</label>
-        <select class="pipe">
-          <option value="b-pret">BT prêt / en attente</option>
-          <option value="b-affect">RDV pris + Affectation</option>
-          <option value="b-encours">Chantier en cours</option>
-          <option value="b-facturer">À facturer</option>
-        </select>
-      </div>
-      <div class="actions" style="margin-top:6px">
-        <button class="btn primary open">Ouvrir</button>
-        <button class="btn danger delete">🗑 Supprimer</button>
-      </div>`;
-    const sel=card.querySelector('.pipe'); sel.value=b.pipe;
-    sel.onchange=()=>{ b.pipe=sel.value; if(b.pipe==='b-facturer') b.status='facturer';
-      const updated=bonsList.map(x=>x.id===b.id?b:x); Store.save(Store.KEY_BONS, updated); renderBoard(); };
-    card.querySelector('.open').onclick=()=>{
-      Object.entries(b.raw||{}).forEach(([k,v])=>{ const el=$(`[name="${k}"]`); if(!el) return; el.type==='checkbox' ? (el.checked=(v==='oui')) : (el.value=v); });
-      heuresBody && (heuresBody.innerHTML=''); (b.lignes||[]).forEach(r=>addHeuresRow(r));
-      if(heuresBody && !heuresBody.children.length){ for(let i=0;i<3;i++) addHeuresRow(); }
-      rdvPlusBody && (rdvPlusBody.innerHTML=''); (b.rdv_plus||[]).forEach(r=>addRDV(r.date,r.heure));
-      $$('.aff-team').forEach(cb=>cb.checked=(b.team||[]).includes(cb.value));
-      setSelectedEncadrants(getEncadrantsForItem(b).length ? getEncadrantsForItem(b) : [b.encadrant || CURRENT_USER].filter(Boolean));
-      if(b.raw?.['bon.admin']) $('#bon-admin').value=b.raw['bon.admin'];
-      currentBonId=b.id; currentBonNum=b.num_devis;
-      document.querySelector('.tabs .tab[data-tab="bon"]')?.click();
-
-      // Init chat + marquer vu + refresh badge
-      initManagerChat(b);
-      markChatSeen(b, (CURRENT_USER||'').trim());
-      renderBoard();
-    };
-    card.querySelector('.delete').onclick=()=>{ if(confirm(`Supprimer le bon (devis n° ${b.num_devis||''}) ?`)){
-      Store.save(Store.KEY_BONS, bonsList.filter(x=>x.id!==b.id)); renderBoard(); } };
-    col.appendChild(card);
-  });
-}
-
-$('#new-bon-direct-tab')?.addEventListener('click', e=>{
-  e.preventDefault();
-  currentBonId = null;
-  const listB = Store.load(Store.KEY_BONS);
-  $$('[name^="bon."]').forEach(el => { if(el.type==='checkbox') el.checked=false; else el.value=''; });
-  const numEl = $('[name="bon.num_devis"]'); if(numEl) numEl.value = makeDirectBTNum(listB);
-  const dateEl = $('[name="bon.date_devis"]'); if(dateEl) dateEl.value = today();
-  $$('.aff-team').forEach(cb=>cb.checked=false);
-  setSelectedEncadrants([CURRENT_USER].filter(Boolean));
-  heuresBody && (heuresBody.innerHTML=''); for(let i=0;i<3;i++) addHeuresRow();
-  rdvPlusBody && (rdvPlusBody.innerHTML='');
-  document.querySelector('.tabs .tab[data-tab="bon"]')?.click();
-});
-function makeDirectBTNum(){
-  const base = today().replaceAll('-', '');
-  const list = Store.load(Store.KEY_BONS) || [];
-  const count = list.filter(b => String(b.num_devis || '').startsWith('BT-' + base)).length;
-  return `BT-${base}-${String(count + 1).padStart(3, '0')}`;
-}
-
-function initBonDirect(){
-  const numEl = $('[name="direct.num_bt"]');
-  const dateEl = $('[name="direct.date"]');
-
-  if (numEl && !numEl.value) numEl.value = makeDirectBTNum();
-  if (dateEl && !dateEl.value) dateEl.value = today();
-
-  $$('.direct-enc-team').forEach(cb => {
-    cb.checked = cb.value === CURRENT_USER;
-  });
-}
-
-document.querySelector('.tabs .tab[data-tab="bon-direct"]')?.addEventListener('click', () => {
-  setTimeout(initBonDirect, 0);
-});
-
-$('#save-bon-direct')?.addEventListener('click', () => {
-  const raw = Object.fromEntries(
-    $$('[name^="direct."]').map(el => [
-      el.name,
-      el.type === 'checkbox' ? (el.checked ? 'oui' : 'non') : el.value
-    ])
-  );
-
-  const encadrants = normalizeList($$('.direct-enc-team').filter(cb => cb.checked).map(cb => cb.value));
-  const team = normalizeList($$('.direct-aff-team').filter(cb => cb.checked).map(cb => cb.value));
+/* Devis */
+$('#save-devis')?.addEventListener('click', async () => {
+  const raw = serializeNamedFields('devis');
+  const list = Store.load(Store.KEY_DEVIS);
+  const current = list.find((devis) => devis.num === raw['devis.num_devis']);
+  const encadrants = getSelectedDevisEncadrants();
 
   const item = {
-    id: undefined,
-    type: 'bon',
-    num_devis: raw['direct.num_bt'] || makeDirectBTNum(),
-    client: raw['direct.client_nom'] || '',
-    objet: raw['direct.objet'] || '',
-    pipe: 'b-pret',
-    status: 'bons',
-    team,
-    admin: '',
+    id: currentDevisId || undefined,
+    type: 'devis',
+    num: cleanText(raw['devis.num_devis']),
+    client: cleanText(raw['devis.nom']),
+    objet: cleanText(raw['devis.objet_demande'] || raw['devis.objet']),
+    signe: raw['devis.signe'] || 'non',
+    acompte: raw['devis.acompte'] || 'non',
+    refuse: raw['devis.refuse'] || 'non',
     encadrants,
-    encadrant: encadrants[0] || '',
-    lignes: [],
-    rdv_plus: [],
+    encadrant: encadrants[0] || cleanText(raw['devis.encadrant']),
+    pipeline: current?.pipeline || 'd-attente-appel',
     raw: {
-      'bon.num_devis': raw['direct.num_bt'] || '',
-      'bon.date_devis': raw['direct.date'] || '',
-      'bon.client_nom': raw['direct.client_nom'] || '',
-      'bon.client_tel': raw['direct.client_tel'] || '',
-      'bon.client_adresse': raw['direct.client_adresse'] || '',
-      'bon.client_code_postal': raw['direct.client_code_postal'] || '',
-      'bon.client_ville': raw['direct.client_ville'] || '',
-      'bon.objet': `[DÉPANNAGE ${raw['direct.urgence'] || 'normal'}] ${raw['direct.objet'] || ''}`,
-      'bon.encadrants': encadrants.join('|'),
-      'bon.encadrant': encadrants[0] || ''
-    }
+      ...raw,
+      'devis.encadrants': encadrants.join('|'),
+      'devis.encadrant': encadrants[0] || '',
+    },
   };
 
-  if (!item.client) {
-    alert('Nom client obligatoire.');
+  if (!item.num) {
+    alert('Le numero de devis est requis.');
     return;
   }
 
-  const list = Store.load(Store.KEY_BONS) || [];
-  Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis'));
+  const exists = list.some((devis) => devis.num === item.num && devis.id !== currentDevisId);
+  if (exists) {
+    alert('Un devis avec ce numero existe deja.');
+    return;
+  }
 
-  alert('BT dépannage créé.');
-  $$('[name^="direct."]').forEach(el => {
-    if (el.type === 'checkbox') el.checked = false;
-    else el.value = '';
-  });
+  Store.save(Store.KEY_DEVIS, Store.upsertByField(list, item, 'num', currentDevisId));
 
-  renderBoard();
-  document.querySelector('.tabs .tab[data-tab="board"]')?.click();
+  if (item.signe === 'oui' && item.acompte === 'oui' && item.refuse !== 'oui') {
+    autoCreateOrUpdateBonFromDevis(item);
+  }
+
+  currentDevisId = null;
+  try {
+    await Store.flush?.();
+  } catch (error) {
+    console.warn('Impossible de pousser le devis vers le stockage partage', error);
+  }
+  alert('Devis enregistre.');
+  window.location.reload();
 });
-function makeDirectBTNum(){
-  const base = today().replaceAll('-', '');
-  const list = Store.load(Store.KEY_BONS) || [];
-  const count = list.filter(b => String(b.num_devis || '').startsWith('BT-' + base)).length;
-  return `BT-${base}-${String(count + 1).padStart(3, '0')}`;
-}
 
-function initBonDirect(){
-  const numEl = $('[name="direct.num_bt"]');
-  const dateEl = $('[name="direct.date"]');
+$('#load-devis')?.addEventListener('click', () => {
+  const num = prompt('No de devis a charger ?');
+  if (!num) {
+    return;
+  }
 
-  if (numEl && !numEl.value) numEl.value = makeDirectBTNum();
-  if (dateEl && !dateEl.value) dateEl.value = today();
-}
+  const found = Store.load(Store.KEY_DEVIS).find((devis) => devis.num === num);
+  if (!found) {
+    alert('Devis introuvable.');
+    return;
+  }
 
-document.querySelector('.tabs .tab[data-tab="bon-direct"]')?.addEventListener('click', () => {
-  setTimeout(initBonDirect, 0);
+  openDevis(found);
+});
+
+/* Bon */
+$('#save-bon')?.addEventListener('click', () => {
+  const raw = serializeNamedFields('bon');
+  const list = Store.load(Store.KEY_BONS);
+
+  if (!raw['bon.num_devis']) {
+    raw['bon.num_devis'] = makeDirectBTNum(list);
+  }
+
+  const current = currentBonId
+    ? list.find((bon) => bon.id === currentBonId)
+    : list.find((bon) => bon.num_devis === raw['bon.num_devis']);
+  const team = getCheckedValues('.aff-team');
+  const bonAdmin = $('#bon-admin');
+  const admin = cleanText(bonAdmin?.value || current?.admin);
+  const encadrants = normalizeList([
+    ...getSelectedEncadrants(),
+    ...(current?.encadrants || []),
+    ...(current?.encadrant ? [current.encadrant] : []),
+  ]);
+
+  const item = {
+    id: currentBonId || undefined,
+    type: 'bon',
+    num_devis: cleanText(raw['bon.num_devis']),
+    client: cleanText(raw['bon.client_nom']),
+    objet: cleanText(raw['bon.objet']),
+    lignes: collectHeuresRows(),
+    rdv_plus: collectRdvRows(),
+    pipe: current?.pipe || 'b-pret',
+    status: current?.status || (current?.pipe === 'b-facturer' ? 'facturer' : 'bons'),
+    team: team.length ? team : normalizeList(current?.team || []),
+    admin,
+    encadrants,
+    encadrant: encadrants[0] || current?.encadrant || '',
+    raw: {
+      ...raw,
+      'bon.admin': admin,
+      'bon.encadrants': encadrants.join('|'),
+      'bon.encadrant': encadrants[0] || '',
+    },
+  };
+
+  Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis', currentBonId));
+
+  currentBonId = null;
+  currentBonNum = item.num_devis;
+  alert('Bon enregistre.');
+  showTab('board');
+});
+
+$('#load-bon')?.addEventListener('click', () => {
+  const num = prompt('No de devis rattache au bon ?');
+  if (!num) {
+    return;
+  }
+
+  const found = Store.load(Store.KEY_BONS).find((bon) => bon.num_devis === num);
+  if (!found) {
+    alert('Bon introuvable.');
+    return;
+  }
+
+  openBon(found);
+});
+
+$('#new-bon-direct-tab')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  prepareNewBonForm();
+  showTab('bon');
 });
 
 $('#save-bon-direct')?.addEventListener('click', () => {
-  const raw = Object.fromEntries(
-    $$('[name^="direct."]').map(el => [el.name, el.value])
-  );
-
-  const encadrants = normalizeList($$('.direct-enc-team').filter(cb => cb.checked).map(cb => cb.value));
-  const team = normalizeList($$('.direct-aff-team').filter(cb => cb.checked).map(cb => cb.value));
-
-  const num = raw['direct.num_bt'] || makeDirectBTNum();
+  const raw = serializeNamedFields('direct');
+  const encadrants = getCheckedValues('.direct-enc-team');
+  const team = getCheckedValues('.direct-aff-team');
+  const num = cleanText(raw['direct.num_bt']) || makeDirectBTNum();
+  const urgence = cleanText(raw['direct.urgence']) || 'normal';
+  const objetBase = cleanText(raw['direct.objet']);
+  const objet = cleanText(`[DEPANNAGE ${urgence}] ${objetBase}`);
 
   const item = {
     id: undefined,
     type: 'bon',
     num_devis: num,
-    client: raw['direct.client_nom'] || '',
-    objet: `[DÉPANNAGE] ${raw['direct.objet'] || ''}`,
+    client: cleanText(raw['direct.client_nom']),
+    objet,
     pipe: 'b-pret',
     status: 'bons',
     team,
@@ -662,10 +1300,10 @@ $('#save-bon-direct')?.addEventListener('click', () => {
       'bon.client_adresse': raw['direct.client_adresse'] || '',
       'bon.client_code_postal': raw['direct.client_code_postal'] || '',
       'bon.client_ville': raw['direct.client_ville'] || '',
-      'bon.objet': `[DÉPANNAGE ${raw['direct.urgence'] || 'normal'}] ${raw['direct.objet'] || ''}`,
+      'bon.objet': objet,
       'bon.encadrants': encadrants.join('|'),
-      'bon.encadrant': encadrants[0] || CURRENT_USER || ''
-    }
+      'bon.encadrant': encadrants[0] || CURRENT_USER || '',
+    },
   };
 
   if (!item.client) {
@@ -676,10 +1314,334 @@ $('#save-bon-direct')?.addEventListener('click', () => {
   const list = Store.load(Store.KEY_BONS) || [];
   Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis'));
 
-  alert('BT dépannage créé.');
-
-  renderBoard();
-  document.querySelector('.tabs .tab[data-tab="board"]')?.click();
+  alert('BT depannage cree.');
+  resetDirectBonForm();
+  showTab('board');
 });
-/* Premier rendu */
-renderBoard();
+
+/* Board */
+function getBoardColumns() {
+  return {
+    'd-attente-appel': $('#d-attente-appel'),
+    'd-rdv-pris': $('#d-rdv-pris'),
+    'd-a-saisir': $('#d-a-saisir'),
+    'd-attente-retour': $('#d-attente-retour'),
+    'd-accepte': $('#d-accepte'),
+    'd-refuse': $('#d-refuse'),
+    'b-pret': $('#b-pret'),
+    'b-affect': $('#b-affect'),
+    'b-encours': $('#b-encours'),
+    'b-facturer': $('#b-facturer'),
+    'b-archive': $('#b-archive'),
+  };
+}
+
+function getDevisPipeline(devis) {
+  if (devis.pipeline) {
+    return devis.pipeline;
+  }
+
+  if (devis.refuse === 'oui') {
+    return 'd-refuse';
+  }
+
+  if (devis.signe === 'oui' && devis.acompte === 'oui') {
+    return 'd-accepte';
+  }
+
+  return devis.raw?.['devis.rdv_date'] ? 'd-rdv-pris' : 'd-attente-appel';
+}
+
+function getBonPipe(bon) {
+  return bon.pipe || (bon.status === 'facturer' ? 'b-facturer' : 'b-pret');
+}
+
+function renderBoard() {
+  const columns = getBoardColumns();
+  Object.values(columns)
+    .filter(Boolean)
+    .forEach((column) => {
+      column.innerHTML = '';
+    });
+
+  const devisList = Store.load(Store.KEY_DEVIS).map((devis) => ({
+    ...devis,
+    pipeline: getDevisPipeline(devis),
+  }));
+  Store.save(Store.KEY_DEVIS, devisList, { skipRemote: true });
+
+  const visibleDevis = showAll ? devisList : devisList.filter(belongsToChef);
+  visibleDevis.forEach((devis) => {
+    const column = columns[devis.pipeline];
+    if (!column) {
+      return;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="line1">
+        <strong>${escapeHtml(devis.client || 'Client ?')}</strong>
+        <span class="small">Devis no ${escapeHtml(devis.num || '-')}</span>
+      </div>
+      ${displayPeopleChips(devis)}
+      <div class="small" style="margin:4px 0">${escapeHtml(devis.objet || '')}</div>
+      <div class="row" style="margin-top:8px">
+        <label>Etape</label>
+        <select class="pipe">
+          <option value="d-attente-appel">Attente d'appel / RDV</option>
+          <option value="d-rdv-pris">RDV pris</option>
+          <option value="d-a-saisir">A saisir</option>
+          <option value="d-attente-retour">Saisi / attente retour</option>
+          <option value="d-accepte">Accepte</option>
+          <option value="d-refuse">Refuse</option>
+        </select>
+      </div>
+      <div class="grid-3 small" style="margin-top:6px">
+        <label><input type="checkbox" class="chk-signe" ${devis.signe === 'oui' ? 'checked' : ''}> signe</label>
+        <label><input type="checkbox" class="chk-acompte" ${devis.acompte === 'oui' ? 'checked' : ''}> acompte</label>
+      </div>
+      <div class="actions" style="margin-top:6px">
+        <button class="btn primary open">Ouvrir</button>
+        <button class="btn outline print">Imprimer</button>
+        <button class="btn danger delete">Supprimer</button>
+      </div>
+    `;
+
+    const pipeSelect = card.querySelector('.pipe');
+    pipeSelect.value = devis.pipeline;
+    pipeSelect.onchange = () => {
+      devis.pipeline = pipeSelect.value;
+      const updated = devisList.map((entry) => (entry.id === devis.id ? devis : entry));
+      Store.save(Store.KEY_DEVIS, updated);
+
+      if (devis.pipeline === 'd-accepte' && devis.acompte === 'oui') {
+        autoCreateOrUpdateBonFromDevis(devis);
+      }
+
+      renderBoard();
+    };
+
+    card.querySelector('.chk-signe').onchange = (event) => {
+      devis.signe = event.target.checked ? 'oui' : 'non';
+      syncDevisRawFlags(devis);
+      Store.save(Store.KEY_DEVIS, devisList);
+    };
+
+    card.querySelector('.chk-acompte').onchange = (event) => {
+      devis.acompte = event.target.checked ? 'oui' : 'non';
+      syncDevisRawFlags(devis);
+      Store.save(Store.KEY_DEVIS, devisList);
+
+      if (devis.pipeline === 'd-accepte' && devis.acompte === 'oui') {
+        autoCreateOrUpdateBonFromDevis(devis);
+        renderBoard();
+      }
+    };
+
+    card.querySelector('.open').onclick = () => {
+      openDevis(devis);
+    };
+
+    card.querySelector('.print').onclick = () => {
+      printDevisItem(devis);
+    };
+
+    card.querySelector('.delete').onclick = () => {
+      if (confirm(`Supprimer le devis no ${devis.num || ''} ?`)) {
+        Store.save(
+          Store.KEY_DEVIS,
+          devisList.filter((entry) => entry.id !== devis.id),
+        );
+        renderBoard();
+      }
+    };
+
+    column.appendChild(card);
+  });
+
+  const bonsList = Store.load(Store.KEY_BONS).map((bon) => ({
+    ...bon,
+    pipe: getBonPipe(bon),
+  }));
+ Store.save(Store.KEY_BONS, bonsList, { skipRemote: true });
+
+  const visibleBons = showAll ? bonsList : bonsList.filter(belongsToChef);
+  visibleBons.forEach((bon) => {
+    const column = columns[bon.archived ? 'b-archive' : bon.pipe];
+    if (!column) {
+      return;
+    }
+
+    const unread = countUnreadFor(bon, cleanText(CURRENT_USER));
+    const unreadBadge =
+      unread > 0
+        ? `<span class="badge" title="Messages non lus">${unread} nouveau${unread > 1 ? 'x' : ''}</span>`
+        : '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="line1">
+        <strong>${escapeHtml(bon.client || 'Client ?')}</strong>
+        <span class="small">${String(bon.num_devis || '').startsWith('BT-') ? 'BT no' : 'Devis no'} ${escapeHtml(bon.num_devis || '-')}</span>
+      </div>
+      ${displayPeopleChips(bon)}
+      <div class="small" style="margin:4px 0">${escapeHtml((bon.objet || '').slice(0, 100))}</div>
+      <div class="small" style="margin-bottom:6px">${unreadBadge}</div>
+      <div class="row" style="margin-top:6px">
+        <label>Etape</label>
+        <select class="pipe">
+          <option value="b-pret">BT pret / en attente</option>
+          <option value="b-affect">RDV pris + affectation</option>
+          <option value="b-encours">Chantier en cours</option>
+          <option value="b-facturer">A facturer</option>
+        </select>
+      </div>
+      <div class="actions" style="margin-top:6px">
+        <button class="btn primary open">Ouvrir</button>
+        <button class="btn outline print">Imprimer</button>
+        <button class="btn danger delete">Supprimer</button>
+      </div>
+    `;
+
+    const pipeSelect = card.querySelector('.pipe');
+    pipeSelect.value = bon.pipe;
+    pipeSelect.onchange = () => {
+      bon.pipe = pipeSelect.value;
+      if (bon.pipe === 'b-facturer') {
+        bon.status = 'facturer';
+      }
+
+      const updated = bonsList.map((entry) => (entry.id === bon.id ? bon : entry));
+      Store.save(Store.KEY_BONS, updated);
+      renderBoard();
+    };
+
+    card.querySelector('.open').onclick = () => {
+      openBon(bon);
+    };
+
+    card.querySelector('.print').onclick = () => {
+      printBonItem(bon);
+    };
+
+    card.querySelector('.delete').onclick = () => {
+      if (confirm(`Supprimer le bon (devis no ${bon.num_devis || ''}) ?`)) {
+        Store.save(
+          Store.KEY_BONS,
+          bonsList.filter((entry) => entry.id !== bon.id),
+        );
+        renderBoard();
+      }
+    };
+
+    column.appendChild(card);
+  });
+}
+
+/* Code postal -> ville */
+async function fetchCitiesByPostalCode(code) {
+  if (cityCache.has(code)) {
+    return cityCache.get(code);
+  }
+
+  const response = await fetch(
+    `https://geo.api.gouv.fr/communes?codePostal=${code}&fields=nom&format=json`,
+  );
+  const data = await response.json();
+  const cities = Array.isArray(data)
+    ? data.map((entry) => cleanText(entry?.nom)).filter(Boolean)
+    : [];
+
+  cityCache.set(code, cities);
+  return cities;
+}
+
+function applyCityCandidates(field, cities) {
+  if (field.tagName === 'SELECT') {
+    const currentValue = field.value;
+    field.innerHTML = '<option value="">Choisir une ville</option>';
+
+    cities.forEach((city) => {
+      const option = document.createElement('option');
+      option.value = city;
+      option.textContent = city;
+      field.appendChild(option);
+    });
+
+    if (cities.includes(currentValue)) {
+      field.value = currentValue;
+    } else if (cities.length === 1) {
+      field.value = cities[0];
+    }
+
+    return;
+  }
+
+  field.value = cities.length === 1 ? cities[0] : cities.join(', ');
+}
+
+function attachPostalLookup(postalFieldName, cityFieldName) {
+  const postalField = document.querySelector(`[name="${postalFieldName}"]`);
+  const cityField = document.querySelector(`[name="${cityFieldName}"]`);
+
+  if (!postalField || !cityField) {
+    return;
+  }
+
+  postalField.addEventListener('blur', async () => {
+    const code = cleanText(postalField.value);
+    if (!/^\d{5}$/.test(code)) {
+      return;
+    }
+
+    try {
+      const cities = await fetchCitiesByPostalCode(code);
+      if (!cities.length) {
+        return;
+      }
+
+      applyCityCandidates(cityField, cities);
+    } catch (error) {
+      console.warn('Ville introuvable pour ce code postal', error);
+    }
+  });
+}
+
+[
+  ['devis.code_postal', 'devis.ville'],
+  ['devis.chantier_code_postal', 'devis.chantier_ville'],
+  ['bon.client_code_postal', 'bon.client_ville'],
+  ['bon.chantier_code_postal', 'bon.chantier_ville'],
+  ['direct.client_code_postal', 'direct.client_ville'],
+].forEach(([postalFieldName, cityFieldName]) => {
+  attachPostalLookup(postalFieldName, cityFieldName);
+});
+
+window.addEventListener('shared-store-changed', () => {
+  if ($('#tab-board')?.classList.contains('show')) {
+    renderBoard();
+  }
+});
+
+Store.syncFromServer?.()
+  .then(() => {
+    renderBoard();
+  })
+  .catch((error) => {
+    console.warn('Impossible de synchroniser les donnees partagees', error);
+    renderBoard();
+  });
+
+setInterval(() => {
+  Store.syncFromServer?.()
+    .then(() => {
+      if ($('#tab-board')?.classList.contains('show')) {
+        renderBoard();
+      }
+    })
+    .catch((error) => {
+      console.warn('Impossible d actualiser les donnees partagees', error);
+    });
+}, 5000);

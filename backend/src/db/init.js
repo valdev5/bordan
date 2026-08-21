@@ -48,7 +48,16 @@ function initDb() {
         UPDATE bons SET updated_at = datetime('now') WHERE id = NEW.id;
       END;
     `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS shared_state (
+        key TEXT PRIMARY KEY,
+        value_json TEXT NOT NULL DEFAULT '[]',
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
   });
+  
 }
 
 module.exports = { initDb };

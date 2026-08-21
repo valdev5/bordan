@@ -4,13 +4,17 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
+const { initDb } = require("./src/db/init");
 const authRoutes = require("./src/routes/auth");
 const bonRoutes = require("./src/routes/bons");
 const auditRoutes = require("./src/routes/audit");
+const stateRoutes = require("./src/routes/state");
 
 const app = express();
 
 const PORT = Number(process.env.PORT || 3001);
+
+initDb();
 
 // CORS DEV: autorise 127.0.0.1 + localhost sur ports courants + variables d'env
 const allowedOrigins = new Set([
@@ -45,6 +49,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/bons", bonRoutes);
 app.use("/api/audit", auditRoutes);
+app.use("/api/state", stateRoutes);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
