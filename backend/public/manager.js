@@ -362,6 +362,8 @@ function openPrintWindow(title, bodyHtml) {
           .print-table{width:100%;border-collapse:collapse;margin-top:8px}
           .print-table th,.print-table td{border:1px solid #d1d5db;padding:8px;vertical-align:top;text-align:left}
           .print-table th{background:#f3f4f6;width:32%}
+          .print-lines{margin-top:8px}
+          .print-line{border-bottom:1px solid #9ca3af;min-height:24px;padding:2px 1px}
           .toolbar{margin-bottom:16px;text-align:right}
           .toolbar button{padding:10px 14px;border:0;background:#111827;color:#fff;border-radius:8px;cursor:pointer}
           .small{font-size:13px}
@@ -500,6 +502,12 @@ function buildBonPrintHtml(item) {
     return [formatPrintDate(dateDebut), heureDebut, formatPrintDate(dateFin), heureFin, commentaire];
   });
 
+  // Toujours au moins 4 lignes imprimees, meme vides, pour ecrire a la main sur le papier
+  const detailsLines = cleanText(raw['bon.details']) ? String(raw['bon.details']).split('\n') : [];
+  while (detailsLines.length < 4) {
+    detailsLines.push('');
+  }
+
   const title = String(item.num_devis || '').startsWith('BT-') ? 'BT depannage' : 'Bon de travail';
 
   return `
@@ -559,6 +567,13 @@ function buildBonPrintHtml(item) {
         `
         : ''
     }
+
+    <div class="print-block">
+      <h2>Détails</h2>
+      <div class="print-lines">
+        ${detailsLines.map((line) => `<div class="print-line">${escapeHtml(line)}</div>`).join('')}
+      </div>
+    </div>
 
     <div class="print-block">
       <h2>Rendez-vous</h2>
