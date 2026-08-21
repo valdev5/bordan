@@ -26,7 +26,7 @@ const users = [
   { username: 'Burak', role: 'worker' },
   { username: 'Bertrand', role: 'worker' },
   { username: 'Olivier', role: 'worker' },
-  { username: 'Edgard', role: 'worker' },
+  { username: 'Edgar', role: 'worker' },
 
   // workers - equipe Tarare
   { username: 'Denis', role: 'worker' },

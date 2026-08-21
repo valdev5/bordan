@@ -64,6 +64,18 @@ router.post('/users', requireAuth, requireRole('manager'), (req, res) => {
   });
 });
 
+// DELETE /api/auth/users/:username (manager only) - supprime un compte
+router.delete('/users/:username', requireAuth, requireRole('manager'), (req, res) => {
+  const username = String(req.params.username || '').trim();
+
+  db.run('DELETE FROM users WHERE username = ?', [username], function (err) {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    audit(req.user.sub, 'DELETE_USER', 'USER', null, { username });
+    return res.json({ ok: true });
+  });
+});
+
 // POST /api/auth/logout (optional: audit)
 router.post('/logout', (req, res) => {
   // Frontend clears token; this endpoint is only to log.
