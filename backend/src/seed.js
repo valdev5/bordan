@@ -28,6 +28,7 @@ const users = [
   { username: 'Olivier', role: 'worker' },
 
   // workers - equipe Tarare
+  { username: 'Denis', role: 'worker' },
   { username: 'Bachir', role: 'worker' },
   { username: 'Fabrice', role: 'worker' },
   { username: 'Mazlum', role: 'worker' },
