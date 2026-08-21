@@ -971,6 +971,47 @@ function prepareNewBonForm() {
   setSelectedEncadrants([CURRENT_USER].filter(Boolean));
   resetHeuresRows(3);
   resetRdvRows();
+  resetManagerChatAndGallery();
+}
+
+// Un bon pas encore enregistre n'a pas d'id : la conversation et les photos
+// de l'ancien bon ouvert ne doivent pas rester affichees ni actives.
+function resetManagerChatAndGallery() {
+  const chatLog = $('#mgr-chat-log');
+  const chatInput = $('#mgr-chat-input');
+  const chatSend = $('#mgr-chat-send');
+
+  if (chatLog) {
+    chatLog.innerHTML = '<div class="small muted">Enregistrez le bon pour activer les messages.</div>';
+  }
+  if (chatInput) {
+    chatInput.value = '';
+  }
+  if (chatSend) {
+    chatSend.onclick = null;
+    chatSend.disabled = true;
+  }
+
+  const gallery = $('#mgr-gallery');
+  const galleryEmpty = $('#mgr-gallery-empty');
+  const photoInput = $('#mgr-photo-input');
+  const photoAdd = $('#mgr-photo-add');
+
+  if (gallery) {
+    gallery.innerHTML = '';
+  }
+  if (galleryEmpty) {
+    galleryEmpty.textContent = 'Enregistrez le bon pour activer les photos.';
+    galleryEmpty.style.display = '';
+  }
+  if (photoInput) {
+    photoInput.value = '';
+    photoInput.onchange = null;
+  }
+  if (photoAdd) {
+    photoAdd.onclick = null;
+    photoAdd.disabled = true;
+  }
 }
 
 function resetDirectBonForm() {
@@ -1033,6 +1074,8 @@ function initManagerChat(bon) {
   if (!log || !input || !sendButton) {
     return;
   }
+
+  sendButton.disabled = false;
 
   const who = cleanText(CURRENT_USER) || 'Encadrant';
 
@@ -1106,6 +1149,9 @@ function initManagerGallery(bon) {
   if (!grid || !empty || !input || !addButton) {
     return;
   }
+
+  addButton.disabled = false;
+  empty.textContent = 'Aucune photo.';
 
   const who = cleanText(CURRENT_USER) || 'Encadrant';
 
@@ -1344,7 +1390,8 @@ $('#save-bon')?.addEventListener('click', () => {
   ]);
 
   const item = {
-    id: currentBonId || undefined,
+    ...(current || {}),
+    id: currentBonId || current?.id || undefined,
     type: 'bon',
     num_devis: cleanText(raw['bon.num_devis']),
     client: cleanText(raw['bon.client_nom']),
