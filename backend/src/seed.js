@@ -27,6 +27,24 @@ const users = [
   { username: 'Bertrand', role: 'worker' },
   { username: 'Olivier', role: 'worker' },
 
+  // workers - equipe Tarare
+  { username: 'Bachir', role: 'worker' },
+  { username: 'Fabrice', role: 'worker' },
+  { username: 'Mazlum', role: 'worker' },
+  { username: 'Omer', role: 'worker' },
+  { username: 'Lucas', role: 'worker' },
+  { username: 'Thierry', role: 'worker' },
+  { username: 'Anthony', role: 'worker' },
+  { username: 'Gérard', role: 'worker' },
+  { username: 'Julien', role: 'worker' },
+  { username: 'Philippe', role: 'worker' },
+  { username: 'Cheik', role: 'worker' },
+  { username: 'Ahmed', role: 'worker' },
+  { username: 'Yoseane', role: 'worker' },
+  { username: 'Chris', role: 'worker' },
+  { username: 'Wakary', role: 'worker' },
+  { username: 'Christophe', role: 'worker' },
+
   // compta
   { username: 'Sophie', role: 'compta' },
   { username: 'Catherine', role: 'compta' },
