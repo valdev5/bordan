@@ -74,6 +74,19 @@ function renderWork() {
     return;
   }
 
+  // La synchro periodique reconstruit toute la liste : on sauvegarde le message
+  // en cours de saisie pour ne pas l effacer sous les yeux de l utilisateur.
+  const activeElement = document.activeElement;
+  let pendingChatInput = null;
+  if (activeElement && wrap.contains(activeElement) && activeElement.classList.contains('chat-input')) {
+    pendingChatInput = {
+      bonId: activeElement.closest('.work-card')?.dataset.bonId,
+      value: activeElement.value,
+      selectionStart: activeElement.selectionStart,
+      selectionEnd: activeElement.selectionEnd,
+    };
+  }
+
   wrap.innerHTML = '';
 
   const all = Store.load(Store.KEY_BONS) || [];
@@ -128,6 +141,7 @@ function renderWork() {
 
     const card = document.createElement('div');
     card.className = 'work-card';
+    card.dataset.bonId = bon.id;
     card.innerHTML = `
       <h3>${client}</h3>
 
@@ -415,6 +429,16 @@ function renderWork() {
 
     wrap.appendChild(card);
   });
+
+  if (pendingChatInput) {
+    const restoredCard = wrap.querySelector(`[data-bon-id="${pendingChatInput.bonId}"]`);
+    const restoredInput = restoredCard?.querySelector('.chat-input');
+    if (restoredInput) {
+      restoredInput.value = pendingChatInput.value;
+      restoredInput.focus();
+      restoredInput.setSelectionRange(pendingChatInput.selectionStart, pendingChatInput.selectionEnd);
+    }
+  }
 }
 
 window.addEventListener('shared-store-changed', renderWork);
