@@ -311,6 +311,14 @@ textarea {
   grid-template-columns: repeat(4, minmax(240px, 1fr));
 }
 
+.board.board--6 {
+  grid-template-columns: repeat(6, minmax(150px, 1fr));
+}
+
+.board + .board {
+  margin-top: 16px;
+}
+
 .section-label {
   grid-column: 1 / -1;
   font-weight: 800;
@@ -325,6 +333,7 @@ textarea {
 @media (max-width: 1100px) {
   .board.board--3,
   .board.board--4,
+  .board.board--6,
   .board {
     grid-template-columns: repeat(2, minmax(260px, 1fr));
   }
@@ -333,6 +342,7 @@ textarea {
 @media (max-width: 720px) {
   .board.board--3,
   .board.board--4,
+  .board.board--6,
   .board {
     grid-template-columns: 1fr;
   }
