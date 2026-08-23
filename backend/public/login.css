@@ -87,6 +87,31 @@ body{
   50%{ opacity:1; }
 }
 
+.fx-scene .porthole{
+  fill:#0e1620;
+  stroke:#2a3d51;
+  stroke-width:.4;
+}
+
+.fx-scene .accent-warm{
+  fill:#5a2a1f;
+  opacity:.55;
+}
+
+.fx-scene .shopwindow{
+  fill:#12222f;
+  stroke:#26495f;
+  stroke-width:.35;
+  opacity:.85;
+}
+
+.fx-scene .tree circle{ fill:#0e2420; }
+.fx-scene .tree .trunk{ fill:#1a130d; }
+
+.fx-scene .car{ opacity:.55; }
+.fx-scene .car-red{ fill:#5a1f1f; }
+.fx-scene .car-light{ fill:#38434f; }
+
 .fx-scene .ground{ fill:#05080b; }
 .fx-scene .lane{ stroke:rgba(230,237,243,.14); stroke-width:.35; }
 
@@ -113,7 +138,7 @@ body{
   content:'';
   position:absolute;
   width:50vmax; height:50vmax; max-width:620px; max-height:620px;
-  left:50%; top:38%;
+  left:50%; top:25%;
   transform:translate(-50%,-50%);
   background:#0ea5e9;
   border-radius:50%;
