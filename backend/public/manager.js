@@ -790,6 +790,41 @@ function planningGetRdvEntries(bon) {
   return entries;
 }
 
+// Detecte si un membre de l'equipe affectee a deja une mission (sur un autre
+// bon) le meme jour qu'une des dates de RDV du bon en cours d'enregistrement
+function findAssignmentConflicts(item, allBons) {
+  const team = Array.isArray(item.team) ? item.team : [];
+  const myDates = new Set(planningGetRdvEntries(item).map((entry) => entry.date));
+
+  if (!team.length || !myDates.size) {
+    return [];
+  }
+
+  const conflicts = [];
+
+  allBons.forEach((other) => {
+    if (item.id != null && String(other.id) === String(item.id)) {
+      return;
+    }
+
+    const otherTeam = Array.isArray(other.team) ? other.team : [];
+    const otherDates = planningGetRdvEntries(other).map((entry) => entry.date);
+
+    team.forEach((person) => {
+      if (!otherTeam.includes(person)) {
+        return;
+      }
+      otherDates.forEach((date) => {
+        if (myDates.has(date)) {
+          conflicts.push({ person, date, client: other.client || 'Client ?' });
+        }
+      });
+    });
+  });
+
+  return conflicts;
+}
+
 function renderPlanningManager() {
   const head = $('#planning-mgr-head');
   const body = $('#planning-mgr-body');
@@ -1829,6 +1864,19 @@ $('#save-bon')?.addEventListener('click', () => {
       'bon.encadrant': encadrants[0] || '',
     },
   };
+
+  const conflicts = findAssignmentConflicts(item, list);
+  if (conflicts.length) {
+    const lines = conflicts
+      .map((c) => `- ${c.person} le ${formatPrintDate(c.date)} (deja sur "${c.client}")`)
+      .join('\n');
+    const proceed = confirm(
+      `Conflit d'affectation detecte :\n${lines}\n\nEnregistrer quand meme ?`,
+    );
+    if (!proceed) {
+      return;
+    }
+  }
 
   Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis', currentBonId));
 
