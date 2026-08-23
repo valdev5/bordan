@@ -351,12 +351,18 @@ function getClientHistory(clientName, excludeType, excludeId) {
     .filter((devis) => !(excludeType === 'devis' && String(devis.id) === String(excludeId)))
     .map((devis) => {
       const pipeline = getDevisPipeline(devis);
+      const raw = devis.raw || {};
       return {
         type: 'devis',
         label: `${devis.num || '-'} — ${devis.objet || 'Devis'}`,
-        date: devis.raw?.['devis.date_demande'] || '',
+        date: raw['devis.date_demande'] || '',
         status: DEVIS_PIPELINE_LABELS[pipeline] || pipeline,
         done: pipeline === 'd-accepte' || pipeline === 'd-refuse',
+        tel: raw['devis.tel'] || '',
+        adresse: raw['devis.adresse'] || '',
+        codePostal: raw['devis.code_postal'] || '',
+        ville: raw['devis.ville'] || '',
+        numClient: raw['devis.num_client'] || '',
       };
     });
 
@@ -365,12 +371,18 @@ function getClientHistory(clientName, excludeType, excludeId) {
     .filter((bon) => !(excludeType === 'bon' && String(bon.id) === String(excludeId)))
     .map((bon) => {
       const pipeline = bon.archived ? 'b-archive' : getBonPipe(bon);
+      const raw = bon.raw || {};
       return {
         type: 'bon',
         label: `${bon.num_devis || '-'} — ${bon.objet || 'Bon de travail'}`,
-        date: bon.raw?.['bon.date_devis'] || bon.raw?.['bon.rdv'] || '',
+        date: raw['bon.date_devis'] || raw['bon.rdv'] || '',
         status: BON_PIPELINE_LABELS[pipeline] || pipeline,
         done: pipeline === 'b-facturer' || pipeline === 'b-archive',
+        tel: raw['bon.client_tel'] || '',
+        adresse: raw['bon.client_adresse'] || '',
+        codePostal: raw['bon.client_code_postal'] || '',
+        ville: raw['bon.client_ville'] || '',
+        numClient: raw['bon.client_num'] || '',
       };
     });
 
@@ -398,8 +410,8 @@ function renderClientHistory(clientName, prefix, excludeType, excludeId) {
 
   timelineEl.innerHTML = entries
     .map(
-      (entry) => `
-        <div class="tl-item ${entry.done ? 'done' : ''}">
+      (entry, index) => `
+        <div class="tl-item ${entry.done ? 'done' : ''}" data-index="${index}" title="Cliquer pour reprendre adresse / telephone de ce client">
           <div class="tl-top">
             <div class="tl-title">${escapeHtml(entry.label)}</div>
             <div class="tl-date">${escapeHtml(formatPrintDate(entry.date)) || '-'}</div>
@@ -410,6 +422,44 @@ function renderClientHistory(clientName, prefix, excludeType, excludeId) {
       `,
     )
     .join('');
+
+  timelineEl.querySelectorAll('.tl-item').forEach((el) => {
+    el.addEventListener('click', () => {
+      applyClientHistoryEntry(entries[Number(el.dataset.index)], prefix);
+    });
+  });
+}
+
+const CLIENT_HISTORY_FIELD_MAP = {
+  devis: {
+    tel: 'devis.tel',
+    adresse: 'devis.adresse',
+    codePostal: 'devis.code_postal',
+    ville: 'devis.ville',
+    numClient: 'devis.num_client',
+  },
+  bon: {
+    tel: 'bon.client_tel',
+    adresse: 'bon.client_adresse',
+    codePostal: 'bon.client_code_postal',
+    ville: 'bon.client_ville',
+    numClient: 'bon.client_num',
+  },
+};
+
+// Reprend uniquement les coordonnees du client (adresse, telephone, n°) sur
+// un ancien devis/bon, sans toucher aux champs propres au nouveau chantier
+function applyClientHistoryEntry(entry, prefix) {
+  const map = CLIENT_HISTORY_FIELD_MAP[prefix];
+  if (!entry || !map) {
+    return;
+  }
+
+  setFieldValue(map.numClient, entry.numClient);
+  setFieldValue(map.tel, entry.tel);
+  setFieldValue(map.adresse, entry.adresse);
+  setFieldValue(map.codePostal, entry.codePostal);
+  setFieldValue(map.ville, entry.ville);
 }
 
 function buildPrintRows(rows = []) {
