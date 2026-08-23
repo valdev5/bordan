@@ -1,6 +1,18 @@
 // login.js — connexion par mot de passe
 
 (function(){
+  // Sur telephone, on montre toute la devanture (comme sur PC) plutot que
+  // de recadrer sur le centre : on bascule le SVG en mode "meet" cale en bas.
+  const scene = document.querySelector('.fx-scene');
+  if (scene){
+    const mq = window.matchMedia('(max-width:480px)');
+    const applySceneFit = () => {
+      scene.setAttribute('preserveAspectRatio', mq.matches ? 'xMidYMax meet' : 'xMidYMid slice');
+    };
+    applySceneFit();
+    mq.addEventListener ? mq.addEventListener('change', applySceneFit) : mq.addListener(applySceneFit);
+  }
+
   const btn = document.getElementById('btn-login');
   const usernameEl = document.getElementById('username');
   const passwordEl = document.getElementById('password');
