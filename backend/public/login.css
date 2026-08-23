@@ -30,7 +30,7 @@ body::after{
   max-height:700px;
   border-radius:50%;
   filter:blur(90px);
-  opacity:.28;
+  opacity:.22;
   z-index:0;
   pointer-events:none;
   animation:login-drift 18s ease-in-out infinite alternate;
@@ -56,6 +56,55 @@ body::after{
   100%{transform:translate(-4%,-6%) scale(.96);}
 }
 
+/* ===== Plan de plomberie (blueprint) en fond =====
+   viewBox large + preserveAspectRatio="slice" (equivalent de background-size:cover) :
+   remplit tout l'ecran sans jamais deformer les traits, meme sur mobile en portrait */
+.fx-blueprint{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:1;
+  pointer-events:none;
+}
+
+.fx-blueprint .duct{
+  fill:none;
+  stroke:rgba(148,178,197,.16);
+  stroke-width:.6;
+}
+
+.fx-blueprint .duct-wide{
+  fill:none;
+  stroke:rgba(148,178,197,.10);
+  stroke-width:2.2;
+}
+
+.fx-blueprint .node{
+  fill:none;
+  stroke:rgba(148,178,197,.22);
+  stroke-width:.6;
+}
+
+.fx-blueprint .trace{
+  fill:none;
+  stroke:#2dd4ff;
+  stroke-width:.7;
+  stroke-linecap:round;
+  stroke-dasharray:6 400;
+  opacity:.85;
+  filter:drop-shadow(0 0 2px #2dd4ff);
+  animation:trace-run 7s linear infinite;
+}
+
+.fx-blueprint .trace.d2{ animation-delay:-2.8s; }
+.fx-blueprint .trace.d3{ animation-delay:-5s; }
+
+@keyframes trace-run{
+  from{ stroke-dashoffset:400; }
+  to{ stroke-dashoffset:0; }
+}
+
 /* CENTRAGE */
 .login-wrap{
   min-height:100%;
@@ -63,7 +112,7 @@ body::after{
   place-items:center;
   padding:24px;
   position:relative;
-  z-index:1;
+  z-index:2;
 }
 
 /* CARTE */
@@ -88,6 +137,9 @@ body::after{
     animation:none;
   }
   .card{
+    animation:none;
+  }
+  .fx-blueprint .trace{
     animation:none;
   }
   .btn.primary::after{
