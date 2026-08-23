@@ -38,6 +38,43 @@ function escapeHtmlWorker(value) {
     .replaceAll("'", '&#39;');
 }
 
+function getMyBons() {
+  const all = Store.load(Store.KEY_BONS) || [];
+  return isManager(CURRENT_USER)
+    ? all
+    : all.filter((bon) => (bon.team || []).includes(CURRENT_USER));
+}
+
+function tsOfWorker(message) {
+  if (!message) {
+    return 0;
+  }
+  if (typeof message.ts === 'number') {
+    return message.ts;
+  }
+  const timestamp = Date.parse(message.date || '');
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function countUnreadForWorker(bon, who) {
+  const seenTs = bon.chatSeen?.[who] || 0;
+  const messages = Array.isArray(bon.chat) ? bon.chat : [];
+  return messages.filter((message) => (message.from || '') !== who && tsOfWorker(message) > seenTs).length;
+}
+
+function markChatSeenWorker(bon, who) {
+  const allBons = Store.load(Store.KEY_BONS);
+  const index = allBons.findIndex((entry) => entry.id === bon.id);
+  if (index < 0) {
+    return;
+  }
+  const updated = { ...allBons[index] };
+  updated.chatSeen = updated.chatSeen || {};
+  updated.chatSeen[who] = Date.now();
+  allBons[index] = updated;
+  Store.save(Store.KEY_BONS, allBons);
+}
+
 function telLink(number) {
   return number
     ? `<a href="tel:${number.replace(/\s+/g, '')}" class="link">${number}</a>`
@@ -110,10 +147,7 @@ function renderPlanning() {
     return;
   }
 
-  const all = Store.load(Store.KEY_BONS) || [];
-  const mine = isManager(CURRENT_USER)
-    ? all
-    : all.filter((bon) => (bon.team || []).includes(CURRENT_USER));
+  const mine = getMyBons();
 
   const days = getWeekDays(planningWeekOffset);
   const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
@@ -713,7 +747,247 @@ function renderWork() {
   renderPlanning();
 }
 
-window.addEventListener('shared-store-changed', renderWork);
+/* Onglets */
+function showWorkerTab(name) {
+  document.querySelectorAll('.tabs .tab').forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.tab === name);
+  });
+  document.querySelectorAll('main .view').forEach((view) => {
+    view.classList.toggle('show', view.id === `tab-${name}`);
+  });
+
+  if (name === 'messagerie') {
+    refreshMessagerie();
+  }
+}
+
+document.querySelectorAll('.tabs .tab').forEach((tab) => {
+  tab.addEventListener('click', (event) => {
+    event.preventDefault();
+    showWorkerTab(tab.dataset.tab);
+  });
+});
+
+/* Messagerie (un fil par chantier) */
+let messagerieActiveBonId = null;
+let messagerieSearchTerm = '';
+
+function messagerieInitials(client) {
+  return String(client || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
+
+function messagerieSortedRows() {
+  const who = cleanTextWorker(CURRENT_USER);
+  const term = messagerieSearchTerm.trim().toLowerCase();
+
+  return getMyBons()
+    .map((bon) => {
+      const chat = Array.isArray(bon.chat) ? bon.chat : [];
+      return { bon, last: chat[chat.length - 1] || null, unread: countUnreadForWorker(bon, who) };
+    })
+    .filter(({ bon }) => {
+      if (!term) {
+        return true;
+      }
+      return (
+        (bon.client || '').toLowerCase().includes(term) ||
+        (bon.num_devis || '').toLowerCase().includes(term)
+      );
+    })
+    .sort((a, b) => tsOfWorker(b.last) - tsOfWorker(a.last));
+}
+
+function renderMessagerieThreads() {
+  const list = document.getElementById('msg-threads');
+  if (!list) {
+    return;
+  }
+
+  const rows = messagerieSortedRows();
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="small muted" style="padding:14px">Aucun chantier.</div>';
+    return;
+  }
+
+  list.innerHTML = rows
+    .map(({ bon, last, unread }) => {
+      const preview = last
+        ? `${escapeHtmlWorker(last.from || '')} : ${escapeHtmlWorker((last.text || '').slice(0, 60))}`
+        : 'Aucun message';
+      return `
+        <div class="thread ${String(bon.id) === String(messagerieActiveBonId) ? 'active' : ''} ${unread ? 'unread' : ''}" data-bon-id="${bon.id}">
+          <div class="thread-avatar">${escapeHtmlWorker(messagerieInitials(bon.client))}</div>
+          <div class="thread-body">
+            <div class="thread-top">
+              <div class="thread-client">${escapeHtmlWorker(bon.client || 'Client ?')}</div>
+              <div class="thread-time">${escapeHtmlWorker(last?.date || '')}</div>
+            </div>
+            <div class="thread-preview">${preview}</div>
+            ${unread ? `<span class="badge badge-neon thread-badge">🔔 ${unread} nouveau${unread > 1 ? 'x' : ''}</span>` : ''}
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+  list.querySelectorAll('.thread').forEach((el) => {
+    el.addEventListener('click', () => openMessagerieThread(el.dataset.bonId));
+  });
+}
+
+function renderMessagerieConversation(bon) {
+  const title = document.getElementById('msg-conv-title');
+  const sub = document.getElementById('msg-conv-sub');
+  const body = document.getElementById('msg-conv-body');
+  const openLink = document.getElementById('msg-conv-open');
+  if (!title || !sub || !body) {
+    return;
+  }
+
+  const freshBon = Store.load(Store.KEY_BONS).find((entry) => String(entry.id) === String(bon.id)) || bon;
+  const chat = Array.isArray(freshBon.chat) ? freshBon.chat : [];
+  const who = cleanTextWorker(CURRENT_USER);
+
+  title.textContent = freshBon.client || 'Client ?';
+  sub.textContent = `${freshBon.num_devis || '-'}`;
+
+  body.innerHTML = chat.length
+    ? chat
+        .map((message) => {
+          const me = (message.from || '') === who;
+          return `
+            <div class="bubble-row ${me ? 'me' : ''}">
+              <div class="bubble">${me ? '' : `<strong>${escapeHtmlWorker(message.from || '?')}</strong> — `}${escapeHtmlWorker(message.text || '')}</div>
+              <div class="bubble-meta">${escapeHtmlWorker(message.date || '')}</div>
+            </div>
+          `;
+        })
+        .join('')
+    : '<div class="small muted">Aucun message.</div>';
+
+  body.scrollTop = body.scrollHeight;
+
+  if (openLink) {
+    openLink.onclick = (event) => {
+      event.preventDefault();
+      showWorkerTab('travail');
+      const target = document.querySelector(`.work-card[data-bon-id="${freshBon.id}"]`);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+  }
+}
+
+function openMessagerieThread(bonId) {
+  const bon = getMyBons().find((entry) => String(entry.id) === String(bonId));
+  if (!bon) {
+    return;
+  }
+
+  messagerieActiveBonId = bon.id;
+  markChatSeenWorker(bon, cleanTextWorker(CURRENT_USER) || CURRENT_USER);
+  renderMessagerieThreads();
+  renderMessagerieConversation(bon);
+}
+
+function cleanTextWorker(value) {
+  return String(value ?? '').trim();
+}
+
+function sendMessagerieMessage() {
+  const input = document.getElementById('msg-compose-input');
+  if (!input || !messagerieActiveBonId) {
+    return;
+  }
+
+  const text = cleanTextWorker(input.value);
+  if (!text) {
+    return;
+  }
+
+  const who = cleanTextWorker(CURRENT_USER) || CURRENT_USER;
+  const allBons = Store.load(Store.KEY_BONS);
+  const index = allBons.findIndex((entry) => String(entry.id) === String(messagerieActiveBonId));
+  if (index < 0) {
+    alert('Bon introuvable.');
+    return;
+  }
+
+  const updated = { ...allBons[index] };
+  updated.chat = Array.isArray(updated.chat) ? updated.chat : [];
+
+  const now = Date.now();
+  updated.chat.push({ from: who, text, ts: now, date: new Date(now).toLocaleString() });
+  updated.chatSeen = updated.chatSeen || {};
+  updated.chatSeen[who] = now;
+  allBons[index] = updated;
+  Store.save(Store.KEY_BONS, allBons);
+
+  input.value = '';
+  renderMessagerieThreads();
+  renderMessagerieConversation(updated);
+}
+
+document.getElementById('msg-compose-send')?.addEventListener('click', sendMessagerieMessage);
+document.getElementById('msg-compose-input')?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    sendMessagerieMessage();
+  }
+});
+
+document.getElementById('msg-search')?.addEventListener('input', (event) => {
+  messagerieSearchTerm = event.target.value;
+  renderMessagerieThreads();
+});
+
+function refreshMessagerie() {
+  renderMessagerieThreads();
+
+  if (messagerieActiveBonId) {
+    const bon = getMyBons().find((entry) => String(entry.id) === String(messagerieActiveBonId));
+    if (bon) {
+      renderMessagerieConversation(bon);
+      return;
+    }
+  }
+
+  const first = messagerieSortedRows()[0]?.bon;
+  if (first) {
+    openMessagerieThread(first.id);
+  }
+}
+
+function updateMessagerieTabBadge() {
+  const badge = document.getElementById('messagerie-tab-badge');
+  if (!badge) {
+    return;
+  }
+
+  const who = cleanTextWorker(CURRENT_USER);
+  const total = getMyBons().reduce((sum, bon) => sum + countUnreadForWorker(bon, who), 0);
+
+  if (total > 0) {
+    badge.textContent = total > 99 ? '99+' : String(total);
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+window.addEventListener('shared-store-changed', () => {
+  renderWork();
+  if (document.getElementById('tab-messagerie')?.classList.contains('show')) {
+    refreshMessagerie();
+  }
+  updateMessagerieTabBadge();
+});
 
 Store.syncFromServer?.()
   .then(() => {

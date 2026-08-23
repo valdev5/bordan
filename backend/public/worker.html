@@ -17,10 +17,14 @@
       <span id="whoami" class="muted"></span>
       <a class="btn outline" href="#" id="btn-logout">Se déconnecter</a>
     </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="travail">Mon travail</button>
+      <button class="tab" data-tab="messagerie">Messagerie<span class="tab-badge" id="messagerie-tab-badge" style="display:none"></span></button>
+    </nav>
   </header>
 
   <main class="container">
-    <section class="view show">
+    <section class="view show" id="tab-travail">
       <div class="sheet" style="margin-bottom:16px">
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px">
           <h2 class="title" style="margin:0">Planning de la semaine</h2>
@@ -37,6 +41,33 @@
         <h2 class="title">Mes chantiers</h2>
         <div id="work-empty" class="tips" style="display:none">Aucun bon ne t’est affecté pour le moment.</div>
         <div id="work-list" class="work-list"></div>
+      </div>
+    </section>
+
+    <section class="view" id="tab-messagerie">
+      <div class="messenger">
+        <div class="thread-list">
+          <div class="thread-list-head">
+            <h2>Chantiers</h2>
+            <input type="text" id="msg-search" class="thread-search" placeholder="Rechercher un client ou un numéro…">
+          </div>
+          <div class="threads" id="msg-threads"></div>
+        </div>
+
+        <div class="conversation">
+          <div class="conv-head">
+            <div>
+              <h2 id="msg-conv-title">—</h2>
+              <div class="small" id="msg-conv-sub">—</div>
+            </div>
+            <a href="#" class="conv-head-link" id="msg-conv-open">Voir le chantier ↗</a>
+          </div>
+          <div class="conv-body" id="msg-conv-body"></div>
+          <div class="conv-form">
+            <input type="text" id="msg-compose-input" placeholder="Écrire un message…">
+            <button type="button" class="btn primary" id="msg-compose-send">Envoyer</button>
+          </div>
+        </div>
       </div>
     </section>
   </main>
