@@ -143,6 +143,35 @@ function getRdvEntries(bon) {
   return entries;
 }
 
+// Badge "Aujourd'hui" / "Demain" selon les RDV du bon (initial + supplementaires)
+function rdvUrgencyBadgeHtml(bon) {
+  const entries = getRdvEntries(bon);
+  if (!entries.length) {
+    return '';
+  }
+
+  const todayIso = isoDate(new Date());
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowIso = isoDate(tomorrowDate);
+
+  const todayEntry = entries.find((entry) => entry.date === todayIso);
+  const tomorrowEntry = !todayEntry ? entries.find((entry) => entry.date === tomorrowIso) : null;
+
+  const match = todayEntry
+    ? { label: "Aujourd'hui", cls: 'badge-today', entry: todayEntry }
+    : tomorrowEntry
+      ? { label: 'Demain', cls: 'badge-tomorrow', entry: tomorrowEntry }
+      : null;
+
+  if (!match) {
+    return '';
+  }
+
+  const heureText = match.entry.heure ? ` · ${escapeHtmlWorker(match.entry.heure)}` : '';
+  return `<span class="badge ${match.cls}">🕐 ${match.label}${heureText}</span>`;
+}
+
 function renderPlanning() {
   const grid = document.getElementById('planning-grid');
   const rangeLabel = document.getElementById('planning-range');
@@ -833,7 +862,10 @@ function renderMessagerieThreads() {
               <div class="thread-time">${escapeHtmlWorker(last?.date || '')}</div>
             </div>
             <div class="thread-preview">${preview}</div>
-            ${unread ? `<span class="badge badge-neon thread-badge">🔔 ${unread} nouveau${unread > 1 ? 'x' : ''}</span>` : ''}
+            <div class="thread-badges" style="display:flex; gap:5px; flex-wrap:wrap; margin-top:4px">
+              ${rdvUrgencyBadgeHtml(bon)}
+              ${unread ? `<span class="badge badge-neon thread-badge">🔔 ${unread} nouveau${unread > 1 ? 'x' : ''}</span>` : ''}
+            </div>
           </div>
         </div>
       `;

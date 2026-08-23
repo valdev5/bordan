@@ -755,6 +755,35 @@ function planningIsoDate(date) {
   return `${y}-${m}-${d}`;
 }
 
+// Badge "Aujourd'hui" / "Demain" selon les RDV du bon (initial + supplementaires)
+function rdvUrgencyBadgeHtml(bon) {
+  const entries = planningGetRdvEntries(bon);
+  if (!entries.length) {
+    return '';
+  }
+
+  const todayIso = planningIsoDate(new Date());
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowIso = planningIsoDate(tomorrowDate);
+
+  const todayEntry = entries.find((entry) => entry.date === todayIso);
+  const tomorrowEntry = !todayEntry ? entries.find((entry) => entry.date === tomorrowIso) : null;
+
+  const match = todayEntry
+    ? { label: "Aujourd'hui", cls: 'badge-today', entry: todayEntry }
+    : tomorrowEntry
+      ? { label: 'Demain', cls: 'badge-tomorrow', entry: tomorrowEntry }
+      : null;
+
+  if (!match) {
+    return '';
+  }
+
+  const heureText = match.entry.heure ? ` · ${escapeHtml(match.entry.heure)}` : '';
+  return `<span class="badge ${match.cls}">🕐 ${match.label}${heureText}</span>`;
+}
+
 function planningGetWeekDays(offset) {
   const now = new Date();
   const day = now.getDay();
@@ -1020,7 +1049,10 @@ function renderMessagerieThreads() {
               <div class="thread-time">${escapeHtml(last?.date || '')}</div>
             </div>
             <div class="thread-preview">${preview}</div>
-            ${unread ? `<span class="badge badge-neon thread-badge">🔔 ${unread} nouveau${unread > 1 ? 'x' : ''}</span>` : ''}
+            <div class="thread-badges" style="display:flex; gap:5px; flex-wrap:wrap; margin-top:4px">
+              ${rdvUrgencyBadgeHtml(bon)}
+              ${unread ? `<span class="badge badge-neon thread-badge">🔔 ${unread} nouveau${unread > 1 ? 'x' : ''}</span>` : ''}
+            </div>
           </div>
         </div>
       `;
@@ -2115,6 +2147,7 @@ function renderBoard() {
       unread > 0
         ? `<span class="badge badge-neon" title="Messages non lus"><span class="badge-neon-icon">🔔</span>${unread} nouveau${unread > 1 ? 'x' : ''}</span>`
         : '';
+    const rdvBadge = rdvUrgencyBadgeHtml(bon);
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -2125,7 +2158,7 @@ function renderBoard() {
       </div>
       ${displayPeopleChips(bon)}
       <div class="small" style="margin:4px 0">${escapeHtml((bon.objet || '').slice(0, 100))}</div>
-      <div class="small" style="margin-bottom:6px">${unreadBadge}</div>
+      <div class="badge-row" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px">${rdvBadge}${unreadBadge}</div>
       <div class="row" style="margin-top:6px">
         <label>Etape</label>
         <select class="pipe">
