@@ -19,6 +19,7 @@
     </div>
     <nav class="tabs">
       <button class="tab active" data-tab="board">Tableau</button>
+      <button class="tab" data-tab="planning">Planning</button>
       <button class="tab" data-tab="devis">Devis</button>
       <button class="tab" data-tab="bon">Bon de travail</button>
       <button class="tab" data-tab="bon-direct">BT dépannage</button>
@@ -54,6 +55,39 @@
         <div class="col"><div class="col-head">BT – Chantier en cours</div><div id="b-encours" class="col-body"></div></div>
         <div class="col"><div class="col-head">BT – À facturer</div><div id="b-facturer" class="col-body"></div></div>
         <div class="col"><div class="col-head">BT – Archivés</div><div id="b-archive" class="col-body"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== PLANNING ===== -->
+    <section class="view" id="tab-planning">
+      <div class="sheet">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+          <h2 class="title" style="margin:0">Planning de la semaine</h2>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button type="button" class="btn outline" id="planning-mgr-prev" aria-label="Semaine précédente">‹</button>
+            <span class="small muted" id="planning-mgr-range"></span>
+            <button type="button" class="btn outline" id="planning-mgr-next" aria-label="Semaine suivante">›</button>
+          </div>
+          <div class="team-filter" id="planning-mgr-team-toggle">
+            <button type="button" class="team-filter-btn active" data-team="all">Toute l'équipe</button>
+            <button type="button" class="team-filter-btn" data-team="Charbo">Charbo</button>
+            <button type="button" class="team-filter-btn" data-team="Tarare">Tarare</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="planning-table">
+            <thead>
+              <tr id="planning-mgr-head"></tr>
+            </thead>
+            <tbody id="planning-mgr-body"></tbody>
+          </table>
+        </div>
+
+        <div class="small muted" style="margin-top:12px;display:flex;align-items:center;gap:16px">
+          <span><span class="planning-swatch"></span> Mission</span>
+          <span><span class="planning-swatch conflict"></span> Deux missions le même jour</span>
+        </div>
       </div>
     </section>
 

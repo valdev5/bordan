@@ -336,6 +336,126 @@ textarea {
   }
 }
 
+/* ===== Planning semaine (manager, toute l'equipe) ===== */
+.planning-table th.person-col,
+.planning-table td.person-cell {
+  position: sticky;
+  left: 0;
+  background: var(--panel-2);
+  min-width: 130px;
+  z-index: 1;
+}
+
+.planning-table thead th.person-col {
+  z-index: 2;
+}
+
+.planning-table .person-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.planning-table .person-team {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.planning-table td {
+  vertical-align: top;
+}
+
+.planning-day-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 130px;
+}
+
+.mission-chip {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 5px 7px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .2s ease;
+}
+
+.mission-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+}
+
+.mission-chip .heure {
+  color: var(--primary-2, var(--primary));
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.mission-chip.conflict {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, .35);
+}
+
+.conflict-tag {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fecaca;
+  background: rgba(239, 68, 68, .18);
+  border: 1px solid var(--danger);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+.planning-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.planning-swatch.conflict {
+  background: rgba(239, 68, 68, .25);
+  border-color: var(--danger);
+}
+
+.team-filter {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.team-filter-btn {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  transition: transform .18s ease, box-shadow .25s ease, border-color .25s ease, background .25s ease;
+}
+
+.team-filter-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  background: var(--panel);
+  box-shadow: 0 4px 14px rgba(14,165,233,.35), 0 0 10px rgba(45,212,255,.35);
+}
+
+.team-filter-btn.active {
+  background: var(--primary);
+  color: #001018;
+  border-color: transparent;
+}
+
 /* ===== Galerie photos ===== */
 .gallery {
   display: flex;

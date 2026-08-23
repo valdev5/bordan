@@ -711,6 +711,194 @@ function ensurePrintButtons() {
   });
 }
 
+/* Planning manager (toute l'equipe) */
+const PLANNING_ROSTER = [
+  { name: 'Alexy', team: 'Charbo' },
+  { name: 'Thomas', team: 'Charbo' },
+  { name: 'Augustin', team: 'Charbo' },
+  { name: 'Pierre-Clément', team: 'Charbo' },
+  { name: 'Valentin', team: 'Charbo' },
+  { name: 'Benoit', team: 'Charbo' },
+  { name: 'Naiki', team: 'Charbo' },
+  { name: 'Burak', team: 'Charbo' },
+  { name: 'Bertrand', team: 'Charbo' },
+  { name: 'Maxence', team: 'Charbo' },
+  { name: 'Olivier', team: 'Charbo' },
+  { name: 'Edgar', team: 'Charbo' },
+  { name: 'Denis', team: 'Tarare' },
+  { name: 'Bachir', team: 'Tarare' },
+  { name: 'Fabrice', team: 'Tarare' },
+  { name: 'Mazlum', team: 'Tarare' },
+  { name: 'Omer', team: 'Tarare' },
+  { name: 'Lucas', team: 'Tarare' },
+  { name: 'Thierry', team: 'Tarare' },
+  { name: 'Anthony', team: 'Tarare' },
+  { name: 'Gérard', team: 'Tarare' },
+  { name: 'Julien', team: 'Tarare' },
+  { name: 'Philippe', team: 'Tarare' },
+  { name: 'Cheik', team: 'Tarare' },
+  { name: 'Ahmed', team: 'Tarare' },
+  { name: 'Yoseane', team: 'Tarare' },
+  { name: 'Chris', team: 'Tarare' },
+  { name: 'Wakary', team: 'Tarare' },
+  { name: 'ThomasV', team: 'Tarare' },
+  { name: 'Christophe', team: 'Tarare' },
+];
+
+let planningMgrWeekOffset = 0;
+let planningMgrTeamFilter = 'all';
+
+function planningIsoDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function planningGetWeekDays(offset) {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMonday = (day === 0 ? -6 : 1) - day;
+  const monday = new Date(now);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(now.getDate() + diffToMonday + offset * 7);
+
+  const days = [];
+  for (let i = 0; i < 5; i += 1) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+// Dates de RDV d'un bon (RDV initial + RDV supplementaires), choisies par l'encadrant
+function planningGetRdvEntries(bon) {
+  const raw = bon.raw || {};
+  const entries = [];
+
+  if (raw['bon.rdv']) {
+    entries.push({ date: raw['bon.rdv'], heure: raw['bon.rdv_heure'] || '' });
+  }
+
+  (Array.isArray(bon.rdv_plus) ? bon.rdv_plus : []).forEach((rdv) => {
+    if (rdv.date) {
+      entries.push({ date: rdv.date, heure: rdv.heure || '' });
+    }
+  });
+
+  return entries;
+}
+
+function renderPlanningManager() {
+  const head = $('#planning-mgr-head');
+  const body = $('#planning-mgr-body');
+  const rangeLabel = $('#planning-mgr-range');
+  if (!head || !body) {
+    return;
+  }
+
+  const days = planningGetWeekDays(planningMgrWeekOffset);
+  const dayLabels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+  const todayIso = planningIsoDate(new Date());
+
+  if (rangeLabel) {
+    const fmt = (d) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+    rangeLabel.textContent = planningMgrWeekOffset === 0
+      ? `Cette semaine · ${fmt(days[0])} – ${fmt(days[4])}`
+      : `${fmt(days[0])} – ${fmt(days[4])}`;
+  }
+
+  head.innerHTML = `
+    <th class="person-col">Intervenant</th>
+    ${days.map((d, i) => `<th>${dayLabels[i]} ${d.getDate()}</th>`).join('')}
+  `;
+
+  const allBons = Store.load(Store.KEY_BONS) || [];
+  const people = PLANNING_ROSTER.filter(
+    (person) => planningMgrTeamFilter === 'all' || person.team === planningMgrTeamFilter,
+  );
+
+  body.innerHTML = people
+    .map((person) => {
+      const cells = days
+        .map((d) => {
+          const iso = planningIsoDate(d);
+          const items = [];
+
+          allBons.forEach((bon) => {
+            if (!(bon.team || []).includes(person.name)) {
+              return;
+            }
+            planningGetRdvEntries(bon).forEach((entry) => {
+              if (entry.date === iso) {
+                items.push({ bon, entry });
+              }
+            });
+          });
+          items.sort((a, b) => (a.entry.heure || '').localeCompare(b.entry.heure || ''));
+
+          if (!items.length) {
+            return '<td><div class="planning-day-cell"><span class="planning-empty">—</span></div></td>';
+          }
+
+          const conflict = items.length > 1;
+          const chips = items
+            .map(
+              ({ bon, entry }) => `
+                <div class="mission-chip${conflict ? ' conflict' : ''}" data-bon-id="${bon.id}">
+                  ${entry.heure ? `<span class="heure">${escapeHtml(entry.heure)}</span>` : ''}${escapeHtml(bon.client || 'Client ?')}
+                </div>
+              `,
+            )
+            .join('');
+
+          return `<td><div class="planning-day-cell">${chips}${conflict ? '<span class="conflict-tag">2 missions</span>' : ''}</div></td>`;
+        })
+        .join('');
+
+      return `
+        <tr>
+          <td class="person-cell">
+            <div class="person-name">${escapeHtml(person.name)}</div>
+            <div class="person-team">${escapeHtml(person.team)}</div>
+          </td>
+          ${cells}
+        </tr>
+      `;
+    })
+    .join('');
+
+  body.querySelectorAll('.mission-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const bon = allBons.find((entry) => String(entry.id) === chip.dataset.bonId);
+      if (!bon) {
+        return;
+      }
+      openBon(bon);
+    });
+  });
+}
+
+$('#planning-mgr-prev')?.addEventListener('click', () => {
+  planningMgrWeekOffset -= 1;
+  renderPlanningManager();
+});
+
+$('#planning-mgr-next')?.addEventListener('click', () => {
+  planningMgrWeekOffset += 1;
+  renderPlanningManager();
+});
+
+$$('#planning-mgr-team-toggle .team-filter-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $$('#planning-mgr-team-toggle .team-filter-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    planningMgrTeamFilter = btn.dataset.team;
+    renderPlanningManager();
+  });
+});
+
 /* Tabs */
 function showTab(name) {
   const tabs = $$('.tabs .tab');
@@ -729,6 +917,14 @@ function showTab(name) {
       renderBoard();
     } catch (error) {
       console.warn('renderBoard a echoue', error);
+    }
+  }
+
+  if (name === 'planning') {
+    try {
+      renderPlanningManager();
+    } catch (error) {
+      console.warn('renderPlanningManager a echoue', error);
     }
   }
 
@@ -1793,6 +1989,9 @@ function attachPostalLookup(postalFieldName, cityFieldName) {
 window.addEventListener('shared-store-changed', () => {
   if ($('#tab-board')?.classList.contains('show')) {
     renderBoard();
+  }
+  if ($('#tab-planning')?.classList.contains('show')) {
+    renderPlanningManager();
   }
 });
 
