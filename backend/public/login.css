@@ -96,12 +96,33 @@ body{
   letter-spacing:.02em;
   text-anchor:middle;
   dominant-baseline:middle;
-  filter:drop-shadow(0 0 2.2px rgba(45,212,255,.9));
-  animation:sign-pulse 3.6s ease-in-out infinite;
+  filter:
+    drop-shadow(0 0 .3px #2dd4ff)
+    drop-shadow(0 0 1px #0ea5e9)
+    drop-shadow(0 0 2.2px #0ea5e9);
 }
-@keyframes sign-pulse{
-  0%,100%{ opacity:.82; }
-  50%{ opacity:1; }
+
+/* reflet fin qui balaie le texte a vitesse constante (via masque, net et non flou) */
+.fx-scene .sign-highlight{
+  font-family:Arial, sans-serif;
+  font-weight:800;
+  font-size:6.4px;
+  letter-spacing:.02em;
+  text-anchor:middle;
+  dominant-baseline:middle;
+  fill:#f4fdff;
+  mask-image:linear-gradient(100deg, transparent 42%, #000 49%, #000 51%, transparent 58%);
+  -webkit-mask-image:linear-gradient(100deg, transparent 42%, #000 49%, #000 51%, transparent 58%);
+  mask-size:340% 100%;
+  -webkit-mask-size:340% 100%;
+  mask-repeat:no-repeat;
+  -webkit-mask-repeat:no-repeat;
+  filter:drop-shadow(0 0 .5px #f4fdff);
+  animation:sign-shimmer 3.6s linear infinite;
+}
+@keyframes sign-shimmer{
+  from{ mask-position:260% 0; -webkit-mask-position:260% 0; }
+  to{ mask-position:-120% 0; -webkit-mask-position:-120% 0; }
 }
 
 .fx-scene .porthole{
@@ -200,7 +221,7 @@ body{
   }
   .fx-scene .cloud,
   .fx-scene .star,
-  .fx-scene .sign-text,
+  .fx-scene .sign-highlight,
   .fx-scene .sheen-mask-rect,
   .fx-halo::before{
     animation:none;
