@@ -14,7 +14,24 @@ body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
   color:var(--text);
-  background:var(--bg);
+  background-color:var(--bg);
+  /* ciel etoile de secours : comble la zone vide au dessus de la devanture
+     sur mobile (mode "meet" cale en bas) ; invisible sur PC, cache derriere
+     le ciel plein de la scene SVG */
+  background-image:
+    radial-gradient(1.6px 1.6px at 8% 5%, rgba(188,214,232,.85), transparent 60%),
+    radial-gradient(1.2px 1.2px at 20% 12%, rgba(188,214,232,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 34% 4%, rgba(188,214,232,.75), transparent 60%),
+    radial-gradient(1.1px 1.1px at 48% 16%, rgba(188,214,232,.5), transparent 60%),
+    radial-gradient(1.6px 1.6px at 62% 7%, rgba(188,214,232,.8), transparent 60%),
+    radial-gradient(1.2px 1.2px at 74% 18%, rgba(188,214,232,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 88% 5%, rgba(188,214,232,.7), transparent 60%),
+    radial-gradient(1.1px 1.1px at 96% 15%, rgba(188,214,232,.5), transparent 60%),
+    radial-gradient(1px 1px at 14% 24%, rgba(188,214,232,.45), transparent 60%),
+    radial-gradient(1px 1px at 42% 28%, rgba(188,214,232,.4), transparent 60%),
+    radial-gradient(1px 1px at 58% 24%, rgba(188,214,232,.45), transparent 60%),
+    radial-gradient(1px 1px at 82% 26%, rgba(188,214,232,.4), transparent 60%);
+  background-repeat:no-repeat;
   overflow-x:hidden;
   position:relative;
 }
