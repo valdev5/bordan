@@ -908,6 +908,25 @@ function messagerieBons() {
   return showAll ? all : all.filter(belongsToChef);
 }
 
+// Pastille de notification sur l'onglet Messagerie, mise a jour independamment
+// de l'onglet actuellement affiche
+function updateMessagerieTabBadge() {
+  const badge = $('#messagerie-tab-badge');
+  if (!badge) {
+    return;
+  }
+
+  const who = cleanText(CURRENT_USER);
+  const total = messagerieBons().reduce((sum, bon) => sum + countUnreadFor(bon, who), 0);
+
+  if (total > 0) {
+    badge.textContent = total > 99 ? '99+' : String(total);
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 function messagerieInitials(client) {
   return String(client || '?')
     .trim()
@@ -2199,11 +2218,13 @@ window.addEventListener('shared-store-changed', () => {
   if ($('#tab-messagerie')?.classList.contains('show')) {
     refreshMessagerie();
   }
+  updateMessagerieTabBadge();
 });
 
 Store.syncFromServer?.()
   .then(() => {
     renderBoard();
+    updateMessagerieTabBadge();
   })
   .catch((error) => {
     console.warn('Impossible de synchroniser les donnees partagees', error);

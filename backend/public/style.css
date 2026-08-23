@@ -877,6 +877,25 @@ textarea {
   }
 }
 
+/* Pastille de notification sur un onglet (ex: Messagerie) */
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #051b33;
+  border: 1px solid #2dd4ff;
+  color: #c3ecff;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+  animation: neon-pulse 1.4s ease-in-out infinite;
+}
+
 /* ===== Actions ===== */
 .actions {
   display: flex;
