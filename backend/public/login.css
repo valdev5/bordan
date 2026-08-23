@@ -19,47 +19,10 @@ body{
   position:relative;
 }
 
-/* Halo anime en fond, sobre */
-body::before,
-body::after{
-  content:'';
-  position:fixed;
-  width:60vmax;
-  height:60vmax;
-  max-width:700px;
-  max-height:700px;
-  border-radius:50%;
-  filter:blur(90px);
-  opacity:.22;
-  z-index:0;
-  pointer-events:none;
-  animation:login-drift 18s ease-in-out infinite alternate;
-}
-
-body::before{
-  background:#0ea5e9;
-  top:-18%;
-  left:-12%;
-}
-
-body::after{
-  background:#2dd4ff;
-  bottom:-18%;
-  right:-12%;
-  animation-delay:-9s;
-  animation-duration:22s;
-}
-
-@keyframes login-drift{
-  0%{transform:translate(0,0) scale(1);}
-  50%{transform:translate(5%,8%) scale(1.08);}
-  100%{transform:translate(-4%,-6%) scale(.96);}
-}
-
-/* ===== Plan de plomberie (blueprint) en fond =====
+/* ===== Devanture Bordanova animee en fond =====
    viewBox large + preserveAspectRatio="slice" (equivalent de background-size:cover) :
    remplit tout l'ecran sans jamais deformer les traits, meme sur mobile en portrait */
-.fx-blueprint{
+.fx-scene{
   position:fixed;
   inset:0;
   width:100%;
@@ -68,41 +31,96 @@ body::after{
   pointer-events:none;
 }
 
-.fx-blueprint .duct{
-  fill:none;
-  stroke:rgba(148,178,197,.16);
-  stroke-width:.6;
+.fx-scene .cloud{
+  fill:#152233;
+  opacity:.35;
+  filter:blur(4px);
+  animation:cloud-drift 70s linear infinite;
+}
+.fx-scene .cloud.c2{ animation-duration:95s; animation-delay:-30s; opacity:.22; }
+.fx-scene .cloud.c3{ animation-duration:130s; animation-delay:-60s; opacity:.28; }
+
+@keyframes cloud-drift{
+  from{ transform:translateX(-20px); }
+  to{ transform:translateX(20px); }
 }
 
-.fx-blueprint .duct-wide{
-  fill:none;
-  stroke:rgba(148,178,197,.10);
-  stroke-width:2.2;
+.fx-scene .star{
+  fill:#bcd6e8;
+  animation:twinkle 4.5s ease-in-out infinite;
+}
+@keyframes twinkle{
+  0%,100%{ opacity:.15; }
+  50%{ opacity:.85; }
 }
 
-.fx-blueprint .node{
-  fill:none;
-  stroke:rgba(148,178,197,.22);
-  stroke-width:.6;
+.fx-scene .block{ fill:#111a24; }
+.fx-scene .block-front{ fill:#141f2b; }
+.fx-scene .roofline{ stroke:#243342; stroke-width:.4; fill:none; }
+
+.fx-scene .shutter{ fill:#1a2531; stroke:#26374a; stroke-width:.3; }
+.fx-scene .shutter-lines line{ stroke:#0d151d; stroke-width:.35; }
+
+.fx-scene .awning{ fill:#0d3a56; }
+.fx-scene .awning-edge{ fill:#0ea5e9; opacity:.5; }
+
+.fx-scene .sign-box{
+  fill:#0a2c42;
+  stroke:#164a68;
+  stroke-width:.4;
+}
+.fx-scene .sign-text{
+  fill:#2dd4ff;
+  font-family:Arial, sans-serif;
+  font-weight:800;
+  font-size:5.4px;
+  letter-spacing:.02em;
+  text-anchor:middle;
+  filter:drop-shadow(0 0 2.2px rgba(45,212,255,.9));
+  animation:sign-pulse 3.6s ease-in-out infinite;
+}
+@keyframes sign-pulse{
+  0%,100%{ opacity:.82; }
+  50%{ opacity:1; }
 }
 
-.fx-blueprint .trace{
-  fill:none;
-  stroke:#2dd4ff;
-  stroke-width:.7;
-  stroke-linecap:round;
-  stroke-dasharray:6 400;
-  opacity:.85;
-  filter:drop-shadow(0 0 2px #2dd4ff);
-  animation:trace-run 7s linear infinite;
+.fx-scene .ground{ fill:#05080b; }
+.fx-scene .lane{ stroke:rgba(230,237,243,.14); stroke-width:.35; }
+
+.fx-scene .bollard-red{ fill:#8a2a2a; }
+.fx-scene .bollard-white{ fill:#c9d3da; }
+
+/* reflet qui glisse sur les rideaux metalliques */
+.fx-scene .sheen{
+  fill:rgba(230,237,243,.5);
+  mix-blend-mode:overlay;
+}
+.fx-scene .sheen-mask-rect{
+  animation:sheen-run 6.5s ease-in-out infinite;
+}
+@keyframes sheen-run{
+  0%{ transform:translateX(-40px); }
+  45%{ transform:translateX(60px); }
+  100%{ transform:translateX(60px); }
 }
 
-.fx-blueprint .trace.d2{ animation-delay:-2.8s; }
-.fx-blueprint .trace.d3{ animation-delay:-5s; }
-
-@keyframes trace-run{
-  from{ stroke-dashoffset:400; }
-  to{ stroke-dashoffset:0; }
+/* halo discret derriere l'enseigne */
+.fx-halo{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.fx-halo::before{
+  content:'';
+  position:absolute;
+  width:50vmax; height:50vmax; max-width:620px; max-height:620px;
+  left:50%; top:38%;
+  transform:translate(-50%,-50%);
+  background:#0ea5e9;
+  border-radius:50%;
+  filter:blur(110px);
+  opacity:.14;
+  animation:halo-breathe 9s ease-in-out infinite;
+}
+@keyframes halo-breathe{
+  0%,100%{ opacity:.1; }
+  50%{ opacity:.2; }
 }
 
 /* CENTRAGE */
@@ -132,14 +150,14 @@ body::after{
 }
 
 @media (prefers-reduced-motion: reduce){
-  body::before,
-  body::after{
-    animation:none;
-  }
   .card{
     animation:none;
   }
-  .fx-blueprint .trace{
+  .fx-scene .cloud,
+  .fx-scene .star,
+  .fx-scene .sign-text,
+  .fx-scene .sheen-mask-rect,
+  .fx-halo::before{
     animation:none;
   }
   .btn.primary::after{
