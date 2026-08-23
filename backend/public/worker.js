@@ -85,9 +85,12 @@ function telLink(number) {
 // quand la meme rue existe dans plusieurs communes
 function mapLink(address, cityLine = '') {
   const full = [address, cityLine].filter(Boolean).join(', ');
-  return full
-    ? `<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(full)}" class="link">${full}</a>`
-    : '-';
+  if (!full) {
+    return '-';
+  }
+
+  const query = encodeURIComponent(full);
+  return `<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${query}" class="link">${full}</a> <a target="_blank" rel="noopener" href="https://waze.com/ul?q=${query}&navigate=yes" class="link small" style="margin-left:6px; white-space:nowrap">(Waze)</a>`;
 }
 
 function short(text, max = 300) {
