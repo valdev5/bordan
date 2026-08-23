@@ -14,7 +14,9 @@ body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
   color:var(--text);
-  background-color:var(--bg);
+  /* meme teinte que le haut du degrade du ciel de la scene SVG (#sky),
+     pour que la jointure avec le ciel etoile de secours soit invisible */
+  background-color:#060a10;
   /* ciel etoile de secours : comble la zone vide au dessus de la devanture
      sur mobile (mode "meet" cale en bas) ; invisible sur PC, cache derriere
      le ciel plein de la scene SVG */
