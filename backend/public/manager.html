@@ -39,6 +39,13 @@
     <!-- ===== BOARD ===== -->
     <section class="view show" id="tab-board">
       <h2 class="title">Tableau de suivi</h2>
+
+      <div class="search-bar">
+        <span class="search-bar-icon">🔍</span>
+        <input type="text" id="board-search" placeholder="Rechercher un client ou un numéro…">
+      </div>
+      <div class="small muted" id="board-search-count" style="margin-top:6px"></div>
+
       <div class="board board--6">
         <!-- Devis -->
         <div class="col"><div class="col-head">Devis – Attente d’appel / RDV</div><div id="d-attente-appel" class="col-body"></div></div>

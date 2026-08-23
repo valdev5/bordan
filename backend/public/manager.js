@@ -75,6 +75,7 @@ if (!window.Store) {
 /* State */
 const SHOW_ALL_KEY = 'SHOW_ALL_FOR_MANAGER';
 let showAll = localStorage.getItem(SHOW_ALL_KEY) === '1';
+let boardSearchTerm = '';
 let currentDevisId = null;
 let currentBonId = null;
 let currentBonNum = null;
@@ -95,6 +96,32 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+// Echappe le texte en surlignant la portion qui correspond au terme recherche
+function highlightMatch(value, term) {
+  const raw = String(value ?? '');
+  if (!term) {
+    return escapeHtml(raw);
+  }
+
+  const idx = raw.toLowerCase().indexOf(term.toLowerCase());
+  if (idx === -1) {
+    return escapeHtml(raw);
+  }
+
+  const before = raw.slice(0, idx);
+  const match = raw.slice(idx, idx + term.length);
+  const after = raw.slice(idx + term.length);
+  return `${escapeHtml(before)}<mark>${escapeHtml(match)}</mark>${escapeHtml(after)}`;
+}
+
+function matchesBoardSearch(client, num) {
+  if (!boardSearchTerm) {
+    return true;
+  }
+  const term = boardSearchTerm.toLowerCase();
+  return String(client || '').toLowerCase().includes(term) || String(num || '').toLowerCase().includes(term);
 }
 
 function formatChatText(value) {
@@ -1248,6 +1275,11 @@ if (showAllToggle) {
   };
 }
 
+$('#board-search')?.addEventListener('input', (event) => {
+  boardSearchTerm = event.target.value.trim();
+  renderBoard();
+});
+
 /* Bon rows */
 const HEURES_ROW_TYPES = ['date', 'time', 'date', 'time', 'text'];
 
@@ -2033,6 +2065,9 @@ function renderBoard() {
       column.innerHTML = '';
     });
 
+  let boardTotalCount = 0;
+  let boardMatchCount = 0;
+
   const devisList = Store.load(Store.KEY_DEVIS).map((devis) => ({
     ...devis,
     pipeline: getDevisPipeline(devis),
@@ -2046,12 +2081,18 @@ function renderBoard() {
       return;
     }
 
+    boardTotalCount += 1;
+    if (!matchesBoardSearch(devis.client, devis.num)) {
+      return;
+    }
+    boardMatchCount += 1;
+
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
       <div class="line1">
-        <strong>${escapeHtml(devis.client || 'Client ?')}</strong>
-        <span class="small">Devis no ${escapeHtml(devis.num || '-')}</span>
+        <strong>${highlightMatch(devis.client || 'Client ?', boardSearchTerm)}</strong>
+        <span class="small">Devis no ${highlightMatch(devis.num || '-', boardSearchTerm)}</span>
       </div>
       ${displayPeopleChips(devis)}
       <div class="small" style="margin:4px 0">${escapeHtml(devis.objet || '')}</div>
@@ -2142,6 +2183,12 @@ function renderBoard() {
       return;
     }
 
+    boardTotalCount += 1;
+    if (!matchesBoardSearch(bon.client, bon.num_devis)) {
+      return;
+    }
+    boardMatchCount += 1;
+
     const unread = countUnreadFor(bon, cleanText(CURRENT_USER));
     const unreadBadge =
       unread > 0
@@ -2153,8 +2200,8 @@ function renderBoard() {
     card.className = 'card';
     card.innerHTML = `
       <div class="line1">
-        <strong>${escapeHtml(bon.client || 'Client ?')}</strong>
-        <span class="small">${String(bon.num_devis || '').startsWith('BT-') ? 'BT no' : 'Devis no'} ${escapeHtml(bon.num_devis || '-')}</span>
+        <strong>${highlightMatch(bon.client || 'Client ?', boardSearchTerm)}</strong>
+        <span class="small">${String(bon.num_devis || '').startsWith('BT-') ? 'BT no' : 'Devis no'} ${highlightMatch(bon.num_devis || '-', boardSearchTerm)}</span>
       </div>
       ${displayPeopleChips(bon)}
       <div class="small" style="margin:4px 0">${escapeHtml((bon.objet || '').slice(0, 100))}</div>
@@ -2208,6 +2255,13 @@ function renderBoard() {
 
     column.appendChild(card);
   });
+
+  const countLabel = $('#board-search-count');
+  if (countLabel) {
+    countLabel.textContent = boardSearchTerm
+      ? `${boardMatchCount} resultat${boardMatchCount > 1 ? 's' : ''} sur ${boardTotalCount}`
+      : '';
+  }
 }
 
 /* Code postal -> ville */
