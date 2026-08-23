@@ -12,38 +12,6 @@
 <meta name="theme-color" content="#0ea5e9">
 </head>
 <body>
-  <svg class="fx-pipes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    <path class="pipe" d="M-5,22 L28,22 L28,48 L72,48 L72,18 L105,18" />
-    <path class="pipe-shine" d="M-5,20.5 L28,20.5 L28,46.5 L72,46.5 L72,16.5 L105,16.5" />
-    <path class="flow" d="M-5,22 L28,22 L28,48 L72,48 L72,18 L105,18" />
-
-    <path class="pipe" d="M-5,72 L22,72 L22,58 L52,58 L52,86 L105,86" />
-    <path class="pipe-shine" d="M-5,70.5 L22,70.5 L22,56.5 L52,56.5 L52,84.5 L105,84.5" />
-    <path class="flow d2" d="M-5,72 L22,72 L22,58 L52,58 L52,86 L105,86" />
-
-    <path class="pipe" d="M18,-5 L18,12 L44,12 L44,62 L62,62 L62,105" />
-    <path class="pipe-shine" d="M16.5,-5 L16.5,10.5 L42.5,10.5 L42.5,60.5 L60.5,60.5 L60.5,105" />
-    <path class="flow d3" d="M18,-5 L18,12 L44,12 L44,62 L62,62 L62,105" />
-
-    <circle class="joint" cx="28" cy="22" r="3.2" />
-    <circle class="joint" cx="28" cy="48" r="3.2" />
-    <circle class="joint" cx="72" cy="48" r="3.2" />
-    <circle class="joint" cx="72" cy="18" r="3.2" />
-    <circle class="joint" cx="22" cy="72" r="3.2" />
-    <circle class="joint" cx="22" cy="58" r="3.2" />
-    <circle class="joint" cx="52" cy="58" r="3.2" />
-    <circle class="joint" cx="52" cy="86" r="3.2" />
-    <circle class="joint" cx="18" cy="12" r="3.2" />
-    <circle class="joint" cx="44" cy="12" r="3.2" />
-    <circle class="joint" cx="44" cy="62" r="3.2" />
-    <circle class="joint" cx="62" cy="62" r="3.2" />
-
-    <circle class="valve" cx="72" cy="18" r="5.5" />
-    <circle class="valve" cx="22" cy="72" r="5.5" />
-  </svg>
-
-  <div class="fx-drops" id="fx-drops" aria-hidden="true"></div>
-
   <main class="login-wrap">
     <section class="card">
       <h1>Se connecter</h1>
@@ -64,37 +32,6 @@
      
     </section>
   </main>
-
-  <!-- Fond decoratif : gouttes d'eau qui tombent -->
-  <script>
-    (function () {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-      var layer = document.getElementById('fx-drops');
-      if (!layer) return;
-
-      var COUNT = 18;
-      for (var i = 0; i < COUNT; i++) {
-        var leftPct = Math.random() * 100;
-        var duration = 2.4 + Math.random() * 2.2;
-        var delay = -Math.random() * duration;
-
-        var drop = document.createElement('div');
-        drop.className = 'drop';
-        drop.style.left = leftPct + 'vw';
-        drop.style.animationDuration = duration + 's';
-        drop.style.animationDelay = delay + 's';
-        layer.appendChild(drop);
-
-        var ripple = document.createElement('div');
-        ripple.className = 'ripple';
-        ripple.style.left = leftPct + 'vw';
-        ripple.style.animationDuration = duration + 's';
-        ripple.style.animationDelay = delay + 's';
-        layer.appendChild(ripple);
-      }
-    })();
-  </script>
 
   <!-- API d'abord, puis auth, puis la logique du login -->
   <script src="api.js"></script>
