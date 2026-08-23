@@ -64,6 +64,8 @@ body{
 .fx-scene .awning{ fill:#0d3a56; }
 .fx-scene .awning-edge{ fill:#0ea5e9; opacity:.5; }
 
+.fx-scene .sign-pole{ stroke:#243342; stroke-width:.6; }
+
 .fx-scene .sign-box{
   fill:#0a2c42;
   stroke:#164a68;
@@ -73,9 +75,10 @@ body{
   fill:#2dd4ff;
   font-family:Arial, sans-serif;
   font-weight:800;
-  font-size:5.4px;
+  font-size:6.4px;
   letter-spacing:.02em;
   text-anchor:middle;
+  dominant-baseline:middle;
   filter:drop-shadow(0 0 2.2px rgba(45,212,255,.9));
   animation:sign-pulse 3.6s ease-in-out infinite;
 }
