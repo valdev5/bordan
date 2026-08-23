@@ -322,6 +322,96 @@ function formatPrintText(value) {
   return escapeHtml(value).replace(/\n/g, '<br>');
 }
 
+/* Historique client (devis / bon) */
+const DEVIS_PIPELINE_LABELS = {
+  'd-attente-appel': "Attente d'appel / RDV",
+  'd-rdv-pris': 'RDV pris',
+  'd-a-saisir': 'À saisir',
+  'd-attente-retour': 'Saisi / attente retour',
+  'd-accepte': 'Accepté',
+  'd-refuse': 'Refusé',
+};
+
+const BON_PIPELINE_LABELS = {
+  'b-pret': 'Prêt / en attente',
+  'b-affect': 'RDV pris + affectation',
+  'b-encours': 'Chantier en cours',
+  'b-facturer': 'À facturer',
+  'b-archive': 'Archivé',
+};
+
+function getClientHistory(clientName, excludeType, excludeId) {
+  const term = cleanText(clientName).toLowerCase();
+  if (term.length < 2) {
+    return [];
+  }
+
+  const devisEntries = Store.load(Store.KEY_DEVIS)
+    .filter((devis) => cleanText(devis.client || devis.raw?.['devis.nom']).toLowerCase().includes(term))
+    .filter((devis) => !(excludeType === 'devis' && String(devis.id) === String(excludeId)))
+    .map((devis) => {
+      const pipeline = getDevisPipeline(devis);
+      return {
+        type: 'devis',
+        label: `${devis.num || '-'} — ${devis.objet || 'Devis'}`,
+        date: devis.raw?.['devis.date_demande'] || '',
+        status: DEVIS_PIPELINE_LABELS[pipeline] || pipeline,
+        done: pipeline === 'd-accepte' || pipeline === 'd-refuse',
+      };
+    });
+
+  const bonEntries = Store.load(Store.KEY_BONS)
+    .filter((bon) => cleanText(bon.client || bon.raw?.['bon.client_nom']).toLowerCase().includes(term))
+    .filter((bon) => !(excludeType === 'bon' && String(bon.id) === String(excludeId)))
+    .map((bon) => {
+      const pipeline = bon.archived ? 'b-archive' : getBonPipe(bon);
+      return {
+        type: 'bon',
+        label: `${bon.num_devis || '-'} — ${bon.objet || 'Bon de travail'}`,
+        date: bon.raw?.['bon.date_devis'] || bon.raw?.['bon.rdv'] || '',
+        status: BON_PIPELINE_LABELS[pipeline] || pipeline,
+        done: pipeline === 'b-facturer' || pipeline === 'b-archive',
+      };
+    });
+
+  return [...devisEntries, ...bonEntries].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+
+function renderClientHistory(clientName, prefix, excludeType, excludeId) {
+  const box = $(`#${prefix}-history-box`);
+  const nameEl = $(`#${prefix}-history-client-name`);
+  const countEl = $(`#${prefix}-history-count`);
+  const timelineEl = $(`#${prefix}-history-timeline`);
+  if (!box || !nameEl || !countEl || !timelineEl) {
+    return;
+  }
+
+  const entries = getClientHistory(clientName, excludeType, excludeId);
+  if (!entries.length) {
+    box.classList.remove('show');
+    return;
+  }
+
+  box.classList.add('show');
+  nameEl.textContent = cleanText(clientName);
+  countEl.textContent = `${entries.length} précédent${entries.length > 1 ? 's' : ''}`;
+
+  timelineEl.innerHTML = entries
+    .map(
+      (entry) => `
+        <div class="tl-item ${entry.done ? 'done' : ''}">
+          <div class="tl-top">
+            <div class="tl-title">${escapeHtml(entry.label)}</div>
+            <div class="tl-date">${escapeHtml(formatPrintDate(entry.date)) || '-'}</div>
+          </div>
+          <div class="tl-meta">${entry.type === 'bon' ? 'Bon de travail' : 'Devis'}</div>
+          <span class="tl-status">${escapeHtml(entry.status)}</span>
+        </div>
+      `,
+    )
+    .join('');
+}
+
 function buildPrintRows(rows = []) {
   return rows
     .filter(([, value]) => cleanText(value))
@@ -1280,6 +1370,14 @@ $('#board-search')?.addEventListener('input', (event) => {
   renderBoard();
 });
 
+$('[name="devis.nom"]')?.addEventListener('input', (event) => {
+  renderClientHistory(event.target.value, 'devis', 'devis', currentDevisId);
+});
+
+$('[name="bon.client_nom"]')?.addEventListener('input', (event) => {
+  renderClientHistory(event.target.value, 'bon', 'bon', currentBonId);
+});
+
 /* Bon rows */
 const HEURES_ROW_TYPES = ['date', 'time', 'date', 'time', 'text'];
 
@@ -1441,6 +1539,7 @@ function openDevis(item) {
   currentDevisId = item.id;
   showTab('devis');
   initDevisDefaults();
+  renderClientHistory(item.client || item.raw?.['devis.nom'] || '', 'devis', 'devis', item.id);
 }
 
 function openBon(item) {
@@ -1462,12 +1561,15 @@ function openBon(item) {
   initManagerChat(item);
   initManagerGallery(item);
   markChatSeen(item, cleanText(CURRENT_USER));
+  renderClientHistory(item.client || item.raw?.['bon.client_nom'] || '', 'bon', 'bon', item.id);
   renderBoard();
 }
 
 function prepareNewBonForm() {
   currentBonId = null;
   currentBonNum = null;
+
+  $('#bon-history-box')?.classList.remove('show');
 
   $$('[name^="bon."]').forEach((field) => {
     if (field.type === 'checkbox' || field.type === 'radio') {

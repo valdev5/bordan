@@ -745,6 +745,114 @@ textarea {
   box-shadow: var(--shadow);
 }
 
+/* ===== Historique client (devis / bon) ===== */
+.history-box {
+  display: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.history-box.show {
+  display: block;
+}
+
+.history-head {
+  background: var(--panel-2);
+  padding: 9px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.history-head strong {
+  font-size: 12.5px;
+}
+
+.history-count {
+  font-size: 10.5px;
+  color: var(--primary-2, var(--primary));
+  background: #051b33;
+  border: 1px solid var(--primary-2, var(--primary));
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.timeline {
+  padding: 4px 13px 8px;
+}
+
+.tl-item {
+  position: relative;
+  padding: 8px 0 8px 18px;
+  border-left: 2px solid var(--border);
+  margin-left: 5px;
+}
+
+.tl-item:last-child {
+  border-left-color: transparent;
+}
+
+.tl-item::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 12px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--panel);
+}
+
+.tl-item.done::before {
+  background: var(--success);
+}
+
+.tl-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tl-title {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.tl-date {
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tl-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.tl-status {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+
+.tl-status.facture {
+  background: rgba(34, 197, 94, .14);
+  border-color: var(--success);
+  color: #bbf7d0;
+}
+
 /* ===== Recherche tableau ===== */
 .search-bar {
   position: relative;
