@@ -899,6 +899,201 @@ $$('#planning-mgr-team-toggle .team-filter-btn').forEach((btn) => {
   });
 });
 
+/* Messagerie (un fil par chantier) */
+let messagerieActiveBonId = null;
+let messagerieSearchTerm = '';
+
+function messagerieBons() {
+  const all = Store.load(Store.KEY_BONS) || [];
+  return showAll ? all : all.filter(belongsToChef);
+}
+
+function messagerieInitials(client) {
+  return String(client || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
+
+function messagerieSortedRows() {
+  const who = cleanText(CURRENT_USER);
+  const term = messagerieSearchTerm.trim().toLowerCase();
+
+  return messagerieBons()
+    .map((bon) => {
+      const chat = Array.isArray(bon.chat) ? bon.chat : [];
+      return { bon, last: chat[chat.length - 1] || null, unread: countUnreadFor(bon, who) };
+    })
+    .filter(({ bon }) => {
+      if (!term) {
+        return true;
+      }
+      return (
+        (bon.client || '').toLowerCase().includes(term) ||
+        (bon.num_devis || '').toLowerCase().includes(term)
+      );
+    })
+    .sort((a, b) => tsOf(b.last) - tsOf(a.last));
+}
+
+function renderMessagerieThreads() {
+  const list = $('#msg-threads');
+  if (!list) {
+    return;
+  }
+
+  const rows = messagerieSortedRows();
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="small muted" style="padding:14px">Aucun chantier.</div>';
+    return;
+  }
+
+  list.innerHTML = rows
+    .map(({ bon, last, unread }) => {
+      const preview = last
+        ? `${escapeHtml(last.from || '')} : ${escapeHtml((last.text || '').slice(0, 60))}`
+        : 'Aucun message';
+      return `
+        <div class="thread ${String(bon.id) === String(messagerieActiveBonId) ? 'active' : ''} ${unread ? 'unread' : ''}" data-bon-id="${bon.id}">
+          <div class="thread-avatar">${escapeHtml(messagerieInitials(bon.client))}</div>
+          <div class="thread-body">
+            <div class="thread-top">
+              <div class="thread-client">${escapeHtml(bon.client || 'Client ?')}</div>
+              <div class="thread-time">${escapeHtml(last?.date || '')}</div>
+            </div>
+            <div class="thread-preview">${preview}</div>
+            ${unread ? `<span class="badge badge-neon thread-badge">🔔 ${unread} nouveau${unread > 1 ? 'x' : ''}</span>` : ''}
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+  list.querySelectorAll('.thread').forEach((el) => {
+    el.addEventListener('click', () => openMessagerieThread(el.dataset.bonId));
+  });
+}
+
+function renderMessagerieConversation(bon) {
+  const title = $('#msg-conv-title');
+  const sub = $('#msg-conv-sub');
+  const body = $('#msg-conv-body');
+  const openLink = $('#msg-conv-open');
+  if (!title || !sub || !body) {
+    return;
+  }
+
+  const freshBon = Store.load(Store.KEY_BONS).find((entry) => String(entry.id) === String(bon.id)) || bon;
+  const chat = Array.isArray(freshBon.chat) ? freshBon.chat : [];
+  const who = cleanText(CURRENT_USER);
+
+  title.textContent = freshBon.client || 'Client ?';
+  sub.textContent = `${freshBon.num_devis || '-'}${freshBon.encadrant ? ` · Encadrant ${freshBon.encadrant}` : ''}`;
+
+  body.innerHTML = chat.length
+    ? chat
+        .map((message) => {
+          const me = (message.from || '') === who;
+          return `
+            <div class="bubble-row ${me ? 'me' : ''}">
+              <div class="bubble">${me ? '' : `<strong>${escapeHtml(message.from || '?')}</strong> — `}${formatChatText(message.text || '')}</div>
+              <div class="bubble-meta">${escapeHtml(message.date || '')}</div>
+            </div>
+          `;
+        })
+        .join('')
+    : '<div class="small muted">Aucun message.</div>';
+
+  body.scrollTop = body.scrollHeight;
+
+  if (openLink) {
+    openLink.onclick = (event) => {
+      event.preventDefault();
+      openBon(freshBon);
+    };
+  }
+}
+
+function openMessagerieThread(bonId) {
+  const bon = messagerieBons().find((entry) => String(entry.id) === String(bonId));
+  if (!bon) {
+    return;
+  }
+
+  messagerieActiveBonId = bon.id;
+  markChatSeen(bon, cleanText(CURRENT_USER) || 'Encadrant');
+  renderMessagerieThreads();
+  renderMessagerieConversation(bon);
+}
+
+function sendMessagerieMessage() {
+  const input = $('#msg-compose-input');
+  if (!input || !messagerieActiveBonId) {
+    return;
+  }
+
+  const text = cleanText(input.value);
+  if (!text) {
+    return;
+  }
+
+  const who = cleanText(CURRENT_USER) || 'Encadrant';
+  const allBons = Store.load(Store.KEY_BONS);
+  const index = allBons.findIndex((entry) => String(entry.id) === String(messagerieActiveBonId));
+  if (index < 0) {
+    alert('Bon introuvable.');
+    return;
+  }
+
+  const updated = { ...allBons[index] };
+  updated.chat = Array.isArray(updated.chat) ? updated.chat : [];
+
+  const now = Date.now();
+  updated.chat.push({ from: who, text, ts: now, date: new Date(now).toLocaleString() });
+  updated.chatSeen = updated.chatSeen || {};
+  updated.chatSeen[who] = now;
+  allBons[index] = updated;
+  Store.save(Store.KEY_BONS, allBons);
+
+  input.value = '';
+  renderMessagerieThreads();
+  renderMessagerieConversation(updated);
+}
+
+$('#msg-compose-send')?.addEventListener('click', sendMessagerieMessage);
+$('#msg-compose-input')?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    sendMessagerieMessage();
+  }
+});
+
+$('#msg-search')?.addEventListener('input', (event) => {
+  messagerieSearchTerm = event.target.value;
+  renderMessagerieThreads();
+});
+
+function refreshMessagerie() {
+  renderMessagerieThreads();
+
+  if (messagerieActiveBonId) {
+    const bon = messagerieBons().find((entry) => String(entry.id) === String(messagerieActiveBonId));
+    if (bon) {
+      renderMessagerieConversation(bon);
+      return;
+    }
+  }
+
+  const first = messagerieSortedRows()[0]?.bon;
+  if (first) {
+    openMessagerieThread(first.id);
+  }
+}
+
 /* Tabs */
 function showTab(name) {
   const tabs = $$('.tabs .tab');
@@ -925,6 +1120,14 @@ function showTab(name) {
       renderPlanningManager();
     } catch (error) {
       console.warn('renderPlanningManager a echoue', error);
+    }
+  }
+
+  if (name === 'messagerie') {
+    try {
+      refreshMessagerie();
+    } catch (error) {
+      console.warn('refreshMessagerie a echoue', error);
     }
   }
 
@@ -1992,6 +2195,9 @@ window.addEventListener('shared-store-changed', () => {
   }
   if ($('#tab-planning')?.classList.contains('show')) {
     renderPlanningManager();
+  }
+  if ($('#tab-messagerie')?.classList.contains('show')) {
+    refreshMessagerie();
   }
 });
 

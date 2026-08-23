@@ -20,6 +20,7 @@
     <nav class="tabs">
       <button class="tab active" data-tab="board">Tableau</button>
       <button class="tab" data-tab="planning">Planning</button>
+      <button class="tab" data-tab="messagerie">Messagerie</button>
       <button class="tab" data-tab="devis">Devis</button>
       <button class="tab" data-tab="bon">Bon de travail</button>
       <button class="tab" data-tab="bon-direct">BT dépannage</button>
@@ -87,6 +88,34 @@
         <div class="small muted" style="margin-top:12px;display:flex;align-items:center;gap:16px">
           <span><span class="planning-swatch"></span> Mission</span>
           <span><span class="planning-swatch conflict"></span> Deux missions le même jour</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MESSAGERIE ===== -->
+    <section class="view" id="tab-messagerie">
+      <div class="messenger">
+        <div class="thread-list">
+          <div class="thread-list-head">
+            <h2>Chantiers</h2>
+            <input type="text" id="msg-search" class="thread-search" placeholder="Rechercher un client ou un numéro…">
+          </div>
+          <div class="threads" id="msg-threads"></div>
+        </div>
+
+        <div class="conversation">
+          <div class="conv-head">
+            <div>
+              <h2 id="msg-conv-title">—</h2>
+              <div class="small" id="msg-conv-sub">—</div>
+            </div>
+            <a href="#" class="conv-head-link" id="msg-conv-open">Ouvrir le bon ↗</a>
+          </div>
+          <div class="conv-body" id="msg-conv-body"></div>
+          <div class="conv-form">
+            <input type="text" id="msg-compose-input" placeholder="Écrire un message…">
+            <button type="button" class="btn primary" id="msg-compose-send">Envoyer</button>
+          </div>
         </div>
       </div>
     </section>

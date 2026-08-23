@@ -456,6 +456,238 @@ textarea {
   border-color: transparent;
 }
 
+/* ===== Messagerie (un fil par chantier) ===== */
+.messenger {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: 620px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.thread-list {
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.thread-list-head {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.thread-list-head h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.thread-search {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: #0b1118;
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.thread-search:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.threads {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.thread {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s ease;
+}
+
+.thread:hover {
+  background: var(--panel-2);
+}
+
+.thread.active {
+  background: var(--panel-2);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.thread-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(14,165,233,.35), rgba(45,212,255,.15));
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-2, var(--primary));
+  flex: none;
+}
+
+.thread-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.thread-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.thread-client {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-time {
+  font-size: 10.5px;
+  color: var(--muted);
+  flex: none;
+}
+
+.thread-preview {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.thread.unread .thread-preview {
+  color: var(--text);
+}
+
+.thread-badge {
+  margin-top: 4px;
+  font-size: 10px;
+  padding: 2px 7px;
+}
+
+.conversation {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.conv-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.conv-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.conv-head-link {
+  font-size: 12px;
+  color: var(--primary-2, var(--primary));
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.conv-head-link:hover {
+  border-color: var(--primary);
+  text-decoration: none;
+}
+
+.conv-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bubble-row {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+}
+
+.bubble-row.me {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.bubble {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 12px 3px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.bubble-row.me .bubble {
+  background: rgba(14,165,233,.16);
+  border-color: var(--primary);
+  border-radius: 12px 12px 3px 12px;
+}
+
+.bubble-meta {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 3px;
+  padding: 0 4px;
+}
+
+.conv-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.conv-form input {
+  flex: 1;
+}
+
+@media (max-width: 760px) {
+  .messenger {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .thread-list {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    max-height: 320px;
+  }
+
+  .conv-body {
+    max-height: 360px;
+  }
+}
+
 /* ===== Galerie photos ===== */
 .gallery {
   display: flex;
