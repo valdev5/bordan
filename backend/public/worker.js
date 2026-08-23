@@ -29,6 +29,15 @@ function isManager(user) {
   return Auth && typeof Auth.isManager === 'function' ? Auth.isManager(user) : false;
 }
 
+function escapeHtmlWorker(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function telLink(number) {
   return number
     ? `<a href="tel:${number.replace(/\s+/g, '')}" class="link">${number}</a>`
@@ -47,6 +56,130 @@ function mapLink(address, cityLine = '') {
 function short(text, max = 300) {
   return (text || '').length > max ? `${text.slice(0, max - 1)}...` : text || '';
 }
+
+/* Planning de la semaine */
+let planningWeekOffset = 0;
+
+function isoDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getWeekDays(offset) {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMonday = (day === 0 ? -6 : 1) - day;
+  const monday = new Date(now);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(now.getDate() + diffToMonday + offset * 7);
+
+  const days = [];
+  for (let i = 0; i < 5; i += 1) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+// Toutes les dates de RDV d'un bon (RDV initial + RDV supplementaires),
+// choisies par l'encadrant, avec leur heure quand elle existe
+function getRdvEntries(bon) {
+  const raw = bon.raw || {};
+  const entries = [];
+
+  if (raw['bon.rdv']) {
+    entries.push({ date: raw['bon.rdv'], heure: raw['bon.rdv_heure'] || '' });
+  }
+
+  (Array.isArray(bon.rdv_plus) ? bon.rdv_plus : []).forEach((rdv) => {
+    if (rdv.date) {
+      entries.push({ date: rdv.date, heure: rdv.heure || '' });
+    }
+  });
+
+  return entries;
+}
+
+function renderPlanning() {
+  const grid = document.getElementById('planning-grid');
+  const rangeLabel = document.getElementById('planning-range');
+  if (!grid) {
+    return;
+  }
+
+  const all = Store.load(Store.KEY_BONS) || [];
+  const mine = isManager(CURRENT_USER)
+    ? all
+    : all.filter((bon) => (bon.team || []).includes(CURRENT_USER));
+
+  const days = getWeekDays(planningWeekOffset);
+  const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+  const todayIso = isoDate(new Date());
+
+  if (rangeLabel) {
+    const fmt = (d) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+    rangeLabel.textContent = planningWeekOffset === 0
+      ? `Cette semaine · ${fmt(days[0])} – ${fmt(days[4])}`
+      : `${fmt(days[0])} – ${fmt(days[4])}`;
+  }
+
+  grid.innerHTML = days
+    .map((d, index) => {
+      const iso = isoDate(d);
+      const isToday = iso === todayIso;
+
+      const items = [];
+      mine.forEach((bon) => {
+        getRdvEntries(bon).forEach((entry) => {
+          if (entry.date === iso) {
+            items.push({ bon, entry });
+          }
+        });
+      });
+      items.sort((a, b) => (a.entry.heure || '').localeCompare(b.entry.heure || ''));
+
+      const itemsHtml = items.length
+        ? items
+            .map(
+              ({ bon, entry }) => `
+                <div class="planning-item" data-bon-id="${bon.id}">
+                  <strong>${escapeHtmlWorker(bon.client || 'Client ?')}</strong>
+                  ${entry.heure ? `<div class="small muted">${escapeHtmlWorker(entry.heure)}</div>` : ''}
+                </div>
+              `,
+            )
+            .join('')
+        : '<div class="planning-empty">—</div>';
+
+      return `
+        <div class="planning-day">
+          <div class="planning-day-head${isToday ? ' today' : ''}">${dayNames[index]} ${d.getDate()}</div>
+          ${itemsHtml}
+        </div>
+      `;
+    })
+    .join('');
+
+  grid.querySelectorAll('.planning-item').forEach((el) => {
+    el.addEventListener('click', () => {
+      const target = document.querySelector(`.work-card[data-bon-id="${el.dataset.bonId}"]`);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+}
+
+document.getElementById('planning-prev')?.addEventListener('click', () => {
+  planningWeekOffset -= 1;
+  renderPlanning();
+});
+
+document.getElementById('planning-next')?.addEventListener('click', () => {
+  planningWeekOffset += 1;
+  renderPlanning();
+});
 
 function toFloatQuarter(value) {
   if (!value) {
@@ -116,6 +249,7 @@ function renderWork() {
 
   if (!mine.length) {
     empty.style.display = '';
+    renderPlanning();
     return;
   }
 
@@ -575,6 +709,8 @@ function renderWork() {
       }
     }
   }
+
+  renderPlanning();
 }
 
 window.addEventListener('shared-store-changed', renderWork);

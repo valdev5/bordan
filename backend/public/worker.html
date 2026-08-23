@@ -21,6 +21,18 @@
 
   <main class="container">
     <section class="view show">
+      <div class="sheet" style="margin-bottom:16px">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px">
+          <h2 class="title" style="margin:0">Planning de la semaine</h2>
+          <div style="display:flex; align-items:center; gap:8px">
+            <button type="button" class="btn outline" id="planning-prev" aria-label="Semaine precedente">‹</button>
+            <span class="small muted" id="planning-range"></span>
+            <button type="button" class="btn outline" id="planning-next" aria-label="Semaine suivante">›</button>
+          </div>
+        </div>
+        <div class="planning-grid" id="planning-grid"></div>
+      </div>
+
       <div class="sheet">
         <h2 class="title">Mes chantiers</h2>
         <div id="work-empty" class="tips" style="display:none">Aucun bon ne t’est affecté pour le moment.</div>
