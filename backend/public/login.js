@@ -4,11 +4,25 @@
   const btn = document.getElementById('btn-login');
   const usernameEl = document.getElementById('username');
   const passwordEl = document.getElementById('password');
+  const btnLabel = btn.textContent;
+  let loading = false;
+
+  function setLoading(on){
+    loading = on;
+    btn.disabled = on;
+    btn.innerHTML = on
+      ? '<span class="spinner" aria-hidden="true"></span> Connexion en cours…'
+      : btnLabel;
+  }
+
   async function go(){
+    if (loading) return;
+
     const username = (usernameEl.value || '').trim();
     const password = (passwordEl.value || '').trim();
     if (!username || !password) { alert('Merci de saisir utilisateur + mot de passe'); return; }
 
+    setLoading(true);
     try {
       const u = await Auth.login(username, password);
 
@@ -21,6 +35,7 @@
       sessionStorage.removeItem('AFTER_LOGIN_TARGET');
       location.href = dest;
     } catch(e){
+      setLoading(false);
       alert(e.message || 'Connexion impossible');
     }
   }
