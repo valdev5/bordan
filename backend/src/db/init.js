@@ -58,6 +58,14 @@ function initDb() {
     `);
 
     db.run(`
+      CREATE TABLE IF NOT EXISTS calendar_tokens (
+        username TEXT PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+
+    db.run(`
       CREATE TABLE IF NOT EXISTS push_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL,

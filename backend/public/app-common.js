@@ -319,6 +319,32 @@ window.Push = (() => {
   refreshLabel();
 })();
 
+// Lien calendrier (flux iCal a ajouter dans Google Calendar / Outlook)
+(function initCalendarLinkButton() {
+  const btn = document.getElementById('btn-calendar-link');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      const { token } = await window.apiFetch('/calendar/token');
+      const url = `${location.origin}/calendar/${token}.ics`;
+
+      try {
+        await navigator.clipboard.writeText(url);
+        alert(
+          `Lien copié !\n\n${url}\n\nDans Google Calendar : "Ajouter un agenda" → "À partir de l'URL".\nDans Outlook : "Ajouter un calendrier" → "À partir d'Internet".`,
+        );
+      } catch {
+        prompt('Copiez ce lien et ajoutez-le dans Google Calendar ou Outlook :', url);
+      }
+    } catch (error) {
+      alert(error.message || 'Impossible de récupérer le lien calendrier.');
+    }
+    btn.disabled = false;
+  });
+})();
+
 // Menu deroulant "Options" (installer l'appli / notifications)
 (function initOptionsMenu() {
   const trigger = document.getElementById('btn-options');

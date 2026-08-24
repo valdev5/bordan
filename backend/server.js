@@ -10,6 +10,8 @@ const bonRoutes = require("./src/routes/bons");
 const auditRoutes = require("./src/routes/audit");
 const stateRoutes = require("./src/routes/state");
 const pushRoutes = require("./src/routes/push");
+const calendarTokenRoutes = require("./src/routes/calendarToken");
+const calendarFeedRoutes = require("./src/routes/calendarFeed");
 
 const app = express();
 
@@ -52,6 +54,8 @@ app.use("/api/bons", bonRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/state", stateRoutes);
 app.use("/api/push", pushRoutes);
+app.use("/api/calendar", calendarTokenRoutes);
+app.use("/calendar", calendarFeedRoutes);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
