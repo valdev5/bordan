@@ -345,6 +345,35 @@ window.Push = (() => {
   });
 })();
 
+// Changer son propre mot de passe
+(function initChangePasswordButton() {
+  const btn = document.getElementById('btn-change-password');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const currentPassword = prompt('Votre mot de passe actuel :');
+    if (!currentPassword) return;
+
+    const newPassword = prompt('Nouveau mot de passe (au moins 4 caractères) :');
+    if (!newPassword) return;
+
+    const confirmPassword = prompt('Retapez le nouveau mot de passe :');
+    if (newPassword !== confirmPassword) {
+      alert('Les deux mots de passe ne correspondent pas. Rien n\'a été changé.');
+      return;
+    }
+
+    btn.disabled = true;
+    try {
+      await window.apiFetch('/auth/password', { method: 'PATCH', body: { currentPassword, newPassword } });
+      alert('Mot de passe changé avec succès.');
+    } catch (error) {
+      alert(error.message || 'Impossible de changer le mot de passe.');
+    }
+    btn.disabled = false;
+  });
+})();
+
 // Menu deroulant "Options" (installer l'appli / notifications)
 (function initOptionsMenu() {
   const trigger = document.getElementById('btn-options');

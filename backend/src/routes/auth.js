@@ -76,6 +76,34 @@ router.delete('/users/:username', requireAuth, requireRole('manager'), (req, res
   });
 });
 
+// PATCH /api/auth/password (n'importe quel compte connecte) - change son propre mot de passe
+router.patch('/password', requireAuth, (req, res) => {
+  const currentPassword = String(req.body?.currentPassword || '');
+  const newPassword = String(req.body?.newPassword || '');
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+  }
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 4 caracteres' });
+  }
+
+  db.get('SELECT id, password_hash FROM users WHERE id = ?', [req.user.sub], async (err, user) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    const ok = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!ok) return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id], (err2) => {
+      if (err2) return res.status(500).json({ error: 'DB error' });
+      audit(req.user.sub, 'CHANGE_PASSWORD', 'USER', user.id);
+      return res.json({ ok: true });
+    });
+  });
+});
+
 // POST /api/auth/logout (optional: audit)
 router.post('/logout', (req, res) => {
   // Frontend clears token; this endpoint is only to log.
