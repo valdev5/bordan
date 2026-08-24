@@ -1586,6 +1586,12 @@ setTimeout(() => {
 function openDevis(item) {
   applyRawValues(item.raw || {});
   setSelectedDevisEncadrants(getPreferredEncadrants(item));
+
+  const devisAdmin = $('#devis-admin');
+  if (devisAdmin) {
+    devisAdmin.value = item.raw?.['devis.admin'] || item.admin || '';
+  }
+
   currentDevisId = item.id;
   showTab('devis');
   initDevisDefaults();
@@ -1975,6 +1981,8 @@ $('#save-devis')?.addEventListener('click', async () => {
   const list = Store.load(Store.KEY_DEVIS);
   const current = list.find((devis) => devis.num === raw['devis.num_devis']);
   const encadrants = getSelectedDevisEncadrants();
+  const devisAdmin = $('#devis-admin');
+  const admin = cleanText(devisAdmin?.value || current?.admin);
 
   const item = {
     id: currentDevisId || undefined,
@@ -1985,6 +1993,7 @@ $('#save-devis')?.addEventListener('click', async () => {
     signe: raw['devis.signe'] || 'non',
     acompte: raw['devis.acompte'] || 'non',
     refuse: raw['devis.refuse'] || 'non',
+    admin,
     encadrants,
     encadrant: encadrants[0] || cleanText(raw['devis.encadrant']),
     pipeline: current?.pipeline || 'd-attente-appel',
@@ -1992,6 +2001,7 @@ $('#save-devis')?.addEventListener('click', async () => {
       ...raw,
       'devis.encadrants': encadrants.join('|'),
       'devis.encadrant': encadrants[0] || '',
+      'devis.admin': admin,
     },
   };
 

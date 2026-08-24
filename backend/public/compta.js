@@ -21,8 +21,8 @@ function renderCompta() {
 
   const all = Store.load(Store.KEY_BONS);
 
-  const mine = all.filter((bon) => bon.status === 'facturer' && bon.compta === CURRENT_USER && !bon.archived);
-  const archived = all.filter((bon) => bon.compta === CURRENT_USER && bon.archived);
+  const mine = all.filter((bon) => bon.status === 'facturer' && bon.admin === CURRENT_USER && !bon.archived);
+  const archived = all.filter((bon) => bon.admin === CURRENT_USER && bon.archived);
 
   const totalHoursAll = mine.reduce((sum, bon) => {
     const h = bon.hours
@@ -40,14 +40,16 @@ function renderCompta() {
       ? Object.values(bon.hours).flat().reduce((sum, hour) => sum + (parseFloat(hour.h) || 0), 0)
       : 0;
     const teamText = (bon.team || []).join(', ') || '-';
+    const isDepannage = String(bon.num_devis || '').startsWith('BT-');
 
     const card = document.createElement('div');
     card.className = 'work-card';
     card.innerHTML = `
       <h3>${bon.client || 'Client ?'}</h3>
       <div class="work-meta">
+        <span class="badge">${isDepannage ? 'BT dépannage' : 'Bon de travail'}</span>
         <span class="badge">Devis no ${bon.num_devis || '-'}</span>
-        <span class="badge">Chef: ${bon.admin || '-'}</span>
+        <span class="badge">Chef: ${bon.encadrant || '-'}</span>
         <span class="badge">Equipe: ${teamText}</span>
         <span class="badge">${totalHours} h</span>
       </div>
@@ -145,22 +147,23 @@ function csvEscape(value) {
 
 function exportComptaCsv() {
   const all = Store.load(Store.KEY_BONS);
-  const mine = all.filter((bon) => bon.status === 'facturer' && bon.compta === CURRENT_USER && !bon.archived);
+  const mine = all.filter((bon) => bon.status === 'facturer' && bon.admin === CURRENT_USER && !bon.archived);
 
   if (!mine.length) {
     alert('Aucun bon à exporter.');
     return;
   }
 
-  const header = ['Client', 'Devis n°', 'Chef', 'Équipe', 'Total heures', 'Objet'];
+  const header = ['Type', 'Client', 'Devis n°', 'Chef', 'Équipe', 'Total heures', 'Objet'];
   const rows = mine.map((bon) => {
     const totalHours = bon.hours
       ? Object.values(bon.hours).flat().reduce((sum, hour) => sum + (parseFloat(hour.h) || 0), 0)
       : 0;
     return [
+      String(bon.num_devis || '').startsWith('BT-') ? 'BT dépannage' : 'Bon de travail',
       bon.client || '',
       bon.num_devis || '',
-      bon.admin || '',
+      bon.encadrant || '',
       (bon.team || []).join(' / '),
       totalHours,
       bon.objet || '',
@@ -234,15 +237,15 @@ function openPrintView(bon) {
         <button onclick="window.print()">Imprimer</button>
       </div>
 
-      <h1>Bon a facturer</h1>
-      <div class="muted">Destinataire compta : ${bon.compta || '-'}</div>
+      <h1>${String(bon.num_devis || '').startsWith('BT-') ? 'BT depannage a facturer' : 'Bon a facturer'}</h1>
+      <div class="muted">Destinataire compta : ${bon.admin || '-'}</div>
 
       <div class="block">
         <h2>Bon de travail</h2>
         <div><strong>Client :</strong> ${bon.client || ''}</div>
         <div><strong>Objet :</strong> ${bon.objet || ''}</div>
         <div><strong>Devis no :</strong> ${bon.num_devis || ''}</div>
-        <div><strong>Chef :</strong> ${bon.admin || '-'}</div>
+        <div><strong>Chef :</strong> ${bon.encadrant || '-'}</div>
         <div><strong>Equipe :</strong> ${teamText}</div>
         <div><strong>Total heures :</strong> ${totalHours} h</div>
       </div>
@@ -266,21 +269,127 @@ function openPrintView(bon) {
   `);
 }
 
-window.addEventListener('shared-store-changed', renderCompta);
+function renderDevisCompta() {
+  const wrap = document.getElementById('devis-list');
+  const empty = document.getElementById('devis-empty');
+  wrap.innerHTML = '';
+
+  const all = Store.load(Store.KEY_DEVIS);
+  const mine = all.filter((devis) => devis.admin === CURRENT_USER && devis.refuse !== 'oui');
+
+  document.getElementById('devis-recap-count').textContent =
+    `${mine.length} devis${mine.length > 1 ? '' : ''} en attente`;
+
+  empty.style.display = mine.length ? 'none' : '';
+
+  mine.forEach((devis) => {
+    const raw = devis.raw || {};
+    const card = document.createElement('div');
+    card.className = 'work-card';
+    card.innerHTML = `
+      <h3>${devis.client || 'Client ?'}</h3>
+      <div class="work-meta">
+        <span class="badge">Devis no ${devis.num || '-'}</span>
+        <span class="badge">Encadrant: ${devis.encadrant || '-'}</span>
+        <span class="badge">${devis.signe === 'oui' ? 'Signé' : 'Non signé'}</span>
+        <span class="badge">${devis.acompte === 'oui' ? 'Acompte reçu' : 'Sans acompte'}</span>
+      </div>
+      <p class="small">${(devis.objet || '').slice(0, 160)}</p>
+
+      <div class="actions">
+        <button class="btn primary" data-view>Voir</button>
+        <button class="btn success" data-done>Marquer traité</button>
+      </div>
+    `;
+
+    card.querySelector('[data-view]').addEventListener('click', () => openDevisPrintView(devis));
+
+    card.querySelector('[data-done]').addEventListener('click', () => {
+      const allDevis = Store.load(Store.KEY_DEVIS);
+      const index = allDevis.findIndex((entry) => entry.id === devis.id);
+      if (index < 0) {
+        alert('Devis introuvable.');
+        return;
+      }
+
+      allDevis[index] = { ...allDevis[index], admin: '', raw: { ...(allDevis[index].raw || {}), 'devis.admin': '' } };
+      Store.save(Store.KEY_DEVIS, allDevis);
+      renderDevisCompta();
+    });
+
+    wrap.appendChild(card);
+  });
+}
+
+function openDevisPrintView(devis) {
+  const popup = window.open('', '_blank', 'width=900,height=700');
+  const raw = devis.raw || {};
+
+  const rows = Object.entries(raw)
+    .map(([key, value]) => {
+      const label = key.replace('devis.', '').replace(/_/g, ' ');
+      return `<tr><td>${label}</td><td>${value || ''}</td></tr>`;
+    })
+    .join('');
+
+  popup.document.write(`
+    <html><head>
+      <title>Devis - ${devis.client || ''} (${devis.num || ''})</title>
+      <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; padding:20px; color:#111;}
+        h1,h2{margin:0 0 8px;}
+        .muted{color:#666}
+        .block{margin:14px 0;}
+        table{width:100%;border-collapse:collapse;margin-top:6px}
+        th,td{border:1px solid #ccc;padding:6px;text-align:left;font-size:13px}
+        @media print {.noprint{display:none}}
+      </style>
+    </head><body>
+      <div class="noprint" style="text-align:right;margin-bottom:10px">
+        <button onclick="window.print()">Imprimer</button>
+      </div>
+
+      <h1>Devis</h1>
+      <div class="muted">Destinataire compta : ${devis.admin || '-'}</div>
+
+      <div class="block">
+        <div><strong>Client :</strong> ${devis.client || ''}</div>
+        <div><strong>Objet :</strong> ${devis.objet || ''}</div>
+        <div><strong>Devis no :</strong> ${devis.num || ''}</div>
+        <div><strong>Encadrant :</strong> ${devis.encadrant || '-'}</div>
+      </div>
+
+      <div class="block">
+        <h2>Détails du devis</h2>
+        <table>
+          <thead><tr><th>Champ</th><th>Valeur</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </body></html>
+  `);
+}
+
+function renderAll() {
+  renderCompta();
+  renderDevisCompta();
+}
+
+window.addEventListener('shared-store-changed', renderAll);
 
 Store.syncFromServer?.()
   .then(() => {
-    renderCompta();
+    renderAll();
   })
   .catch((error) => {
     console.warn('Impossible de synchroniser les bons partages', error);
-    renderCompta();
+    renderAll();
   });
 
 setInterval(() => {
   Store.syncFromServer?.()
     .then(() => {
-      renderCompta();
+      renderAll();
     })
     .catch((error) => {
       console.warn('Impossible d actualiser les bons partages', error);
