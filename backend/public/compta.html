@@ -22,6 +22,47 @@
   <main class="container">
     <section class="view show">
       <div class="sheet">
+        <h2 class="title">Nouveau devis (appel téléphonique)</h2>
+
+        <div class="grid-3">
+          <div class="row"><label>Numéro de devis</label><input id="pd-num" type="text" placeholder="DV-YYYYMMDD-XXX"></div>
+          <div class="row"><label>Date</label><input id="pd-date" type="date"></div>
+          <div class="row"><label>N° client</label><input id="pd-numclient" type="text"></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="row"><label>Nom du client</label><input id="pd-nom" type="text"></div>
+          <div class="row"><label>Téléphone</label><input id="pd-tel" type="tel"></div>
+        </div>
+
+        <div class="row"><label>Adresse</label><input id="pd-adresse" type="text"></div>
+
+        <div class="grid-2">
+          <div class="row"><label>Code postal</label><input id="pd-cp" type="text"></div>
+          <div class="row"><label>Ville</label><input id="pd-ville" type="text"></div>
+        </div>
+
+        <div class="row"><label>Objet de la demande</label><input id="pd-objet" type="text"></div>
+        <div class="row"><label>Notes avant RDV</label><textarea id="pd-notes" rows="3" placeholder="Infos à noter avant le rendez-vous…"></textarea></div>
+
+        <div class="row"><label>Encadrant(s) à assigner</label>
+          <div class="chips">
+            <label><input type="checkbox" class="pd-enc-team" value="Laurent"><span>Laurent</span></label>
+            <label><input type="checkbox" class="pd-enc-team" value="Cédric M"><span>Cédric M</span></label>
+            <label><input type="checkbox" class="pd-enc-team" value="Cédric A"><span>Cédric A</span></label>
+            <label><input type="checkbox" class="pd-enc-team" value="Vivien"><span>Vivien</span></label>
+            <label><input type="checkbox" class="pd-enc-team" value="Karine"><span>Karine</span></label>
+          </div>
+        </div>
+
+        <div class="actions" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
+          <button class="btn primary" id="save-phone-devis">Enregistrer le devis</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="view show">
+      <div class="sheet">
         <h2 class="title">Bons « À facturer » qui me sont assignés</h2>
 
         <div id="compta-recap" class="work-meta" style="margin-bottom:14px;">

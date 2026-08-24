@@ -10,6 +10,93 @@ document.getElementById('btn-logout').addEventListener('click', (event) => {
   Auth.logout();
 });
 
+function cleanText(value) {
+  return String(value ?? '').trim();
+}
+
+function makePhoneDevisNum(list = Store.load(Store.KEY_DEVIS) || []) {
+  const base = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+  const count = list.filter((devis) => String(devis.num || '').startsWith(`DV-${base}`)).length;
+  return `DV-${base}-${String(count + 1).padStart(3, '0')}`;
+}
+
+function initPhoneDevisForm() {
+  const numField = document.getElementById('pd-num');
+  const dateField = document.getElementById('pd-date');
+  if (numField) numField.value = makePhoneDevisNum();
+  if (dateField) dateField.value = new Date().toISOString().slice(0, 10);
+}
+
+initPhoneDevisForm();
+
+document.getElementById('save-phone-devis').addEventListener('click', async () => {
+  const nom = cleanText(document.getElementById('pd-nom').value);
+  if (!nom) {
+    alert('Le nom du client est requis.');
+    return;
+  }
+
+  const num = cleanText(document.getElementById('pd-num').value) || makePhoneDevisNum();
+  const list = Store.load(Store.KEY_DEVIS);
+
+  if (list.some((devis) => devis.num === num)) {
+    alert('Un devis avec ce numéro existe déjà.');
+    return;
+  }
+
+  const encadrants = Array.from(document.querySelectorAll('.pd-enc-team:checked')).map((el) => el.value);
+  const objet = cleanText(document.getElementById('pd-objet').value);
+  const dateField = cleanText(document.getElementById('pd-date').value);
+
+  const item = {
+    type: 'devis',
+    num,
+    client: nom,
+    objet,
+    signe: 'non',
+    acompte: 'non',
+    refuse: 'non',
+    admin: '',
+    encadrants,
+    encadrant: encadrants[0] || '',
+    pipeline: 'd-attente-appel',
+    raw: {
+      'devis.num_devis': num,
+      'devis.date_demande': dateField,
+      'devis.nom': nom,
+      'devis.num_client': cleanText(document.getElementById('pd-numclient').value),
+      'devis.adresse': cleanText(document.getElementById('pd-adresse').value),
+      'devis.code_postal': cleanText(document.getElementById('pd-cp').value),
+      'devis.ville': cleanText(document.getElementById('pd-ville').value),
+      'devis.tel': cleanText(document.getElementById('pd-tel').value),
+      'devis.objet_demande': objet,
+      'devis.notes_avant_rdv': cleanText(document.getElementById('pd-notes').value),
+      'devis.signe': 'non',
+      'devis.acompte': 'non',
+      'devis.refuse': 'non',
+      'devis.encadrants': encadrants.join('|'),
+      'devis.encadrant': encadrants[0] || '',
+      'devis.admin': '',
+      'devis.cree_par': CURRENT_USER,
+    },
+  };
+
+  Store.save(Store.KEY_DEVIS, Store.upsertByField(list, item, 'num'));
+
+  try {
+    await Store.flush?.();
+  } catch (error) {
+    console.warn('Impossible de pousser le devis vers le stockage partage', error);
+  }
+
+  alert('Devis enregistré. Les encadrants assignés le retrouveront dans leur espace.');
+
+  ['pd-numclient', 'pd-nom', 'pd-tel', 'pd-adresse', 'pd-cp', 'pd-ville', 'pd-objet', 'pd-notes']
+    .forEach((id) => { document.getElementById(id).value = ''; });
+  document.querySelectorAll('.pd-enc-team').forEach((el) => { el.checked = false; });
+  initPhoneDevisForm();
+});
+
 function renderCompta() {
   const wrap = document.getElementById('compta-list');
   const empty = document.getElementById('compta-empty');
