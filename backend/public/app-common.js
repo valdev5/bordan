@@ -318,3 +318,65 @@ window.Push = (() => {
 
   refreshLabel();
 })();
+
+// Enregistre le service worker en continu (necessaire pour l'installation de
+// l'appli, independamment de l'activation des notifications)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// Installation de l'appli (PWA) sur l'ecran d'accueil
+(function initInstallButton() {
+  const btn = document.getElementById('btn-install');
+  if (!btn) return;
+
+  let deferredPrompt = null;
+
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  }
+
+  function refresh() {
+    if (isStandalone()) {
+      btn.style.display = 'none';
+      return;
+    }
+    if (deferredPrompt || isIOS()) {
+      btn.style.display = '';
+      btn.textContent = "Installer l'appli";
+      return;
+    }
+    btn.style.display = 'none';
+  }
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredPrompt = event;
+    refresh();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    refresh();
+  });
+
+  btn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      refresh();
+      return;
+    }
+
+    if (isIOS()) {
+      alert('Sur iPhone/iPad : appuyez sur le bouton Partager (carré avec une flèche vers le haut), puis "Sur l\'écran d\'accueil".');
+    }
+  });
+
+  refresh();
+})();
