@@ -319,6 +319,28 @@ window.Push = (() => {
   refreshLabel();
 })();
 
+// Menu deroulant "Options" (installer l'appli / notifications)
+(function initOptionsMenu() {
+  const trigger = document.getElementById('btn-options');
+  const panel = document.getElementById('options-panel');
+  if (!trigger || !panel) return;
+
+  trigger.addEventListener('click', (event) => {
+    event.stopPropagation();
+    panel.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (event) => {
+    if (panel.classList.contains('open') && !panel.contains(event.target) && event.target !== trigger) {
+      panel.classList.remove('open');
+    }
+  });
+
+  panel.querySelectorAll('button').forEach((btn) => {
+    btn.addEventListener('click', () => panel.classList.remove('open'));
+  });
+})();
+
 // Enregistre le service worker en continu (necessaire pour l'installation de
 // l'appli, independamment de l'activation des notifications)
 if ('serviceWorker' in navigator) {

@@ -15,8 +15,13 @@
     <h1>Espace Comptabilité</h1>
     <div class="auth-inline">
       <span id="whoami" class="muted"></span>
-      <button class="btn" id="btn-install" type="button" style="display:none;">Installer l'appli</button>
-      <button class="btn" id="btn-push" type="button">Activer les notifications</button>
+      <div class="menu-dropdown">
+        <button class="btn" id="btn-options" type="button">Options ▾</button>
+        <div class="menu-dropdown-panel" id="options-panel">
+          <button class="btn" id="btn-install" type="button" style="display:none;">Installer l'appli</button>
+          <button class="btn" id="btn-push" type="button">Activer les notifications</button>
+        </div>
+      </div>
       <a class="btn outline" href="#" id="btn-logout">Se déconnecter</a>
     </div>
   </header>
