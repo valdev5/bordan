@@ -99,6 +99,24 @@ a:hover {
   display: block;
 }
 
+/* ===== Marque (logo + titre) ===== */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  display: block;
+  flex: none;
+}
+
+.topbar h1 {
+  margin: 0;
+}
+
 /* ===== Topbar ===== */
 .topbar {
   position: sticky;
