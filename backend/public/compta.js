@@ -24,6 +24,15 @@ function renderCompta() {
   const mine = all.filter((bon) => bon.status === 'facturer' && bon.compta === CURRENT_USER && !bon.archived);
   const archived = all.filter((bon) => bon.compta === CURRENT_USER && bon.archived);
 
+  const totalHoursAll = mine.reduce((sum, bon) => {
+    const h = bon.hours
+      ? Object.values(bon.hours).flat().reduce((s, hour) => s + (parseFloat(hour.h) || 0), 0)
+      : 0;
+    return sum + h;
+  }, 0);
+  document.getElementById('recap-count').textContent = `${mine.length} bon${mine.length > 1 ? 's' : ''} en attente`;
+  document.getElementById('recap-hours').textContent = `${totalHoursAll} h au total`;
+
   empty.style.display = mine.length ? 'none' : '';
 
   mine.forEach((bon) => {
@@ -128,6 +137,49 @@ function renderCompta() {
     archWrap.appendChild(card);
   });
 }
+
+function csvEscape(value) {
+  const str = String(value ?? '');
+  return /[;"\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function exportComptaCsv() {
+  const all = Store.load(Store.KEY_BONS);
+  const mine = all.filter((bon) => bon.status === 'facturer' && bon.compta === CURRENT_USER && !bon.archived);
+
+  if (!mine.length) {
+    alert('Aucun bon à exporter.');
+    return;
+  }
+
+  const header = ['Client', 'Devis n°', 'Chef', 'Équipe', 'Total heures', 'Objet'];
+  const rows = mine.map((bon) => {
+    const totalHours = bon.hours
+      ? Object.values(bon.hours).flat().reduce((sum, hour) => sum + (parseFloat(hour.h) || 0), 0)
+      : 0;
+    return [
+      bon.client || '',
+      bon.num_devis || '',
+      bon.admin || '',
+      (bon.team || []).join(' / '),
+      totalHours,
+      bon.objet || '',
+    ];
+  });
+
+  const csv = [header, ...rows].map((row) => row.map(csvEscape).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `a-facturer_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btn-export-csv').addEventListener('click', exportComptaCsv);
 
 function openPrintView(bon) {
   const devis = (Store.load(Store.KEY_DEVIS) || []).find((entry) => entry.num === bon.num_devis);

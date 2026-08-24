@@ -23,6 +23,13 @@
     <section class="view show">
       <div class="sheet">
         <h2 class="title">Bons « À facturer » qui me sont assignés</h2>
+
+        <div id="compta-recap" class="work-meta" style="margin-bottom:14px;">
+          <span class="badge" id="recap-count">0 bon en attente</span>
+          <span class="badge" id="recap-hours">0 h au total</span>
+          <button class="btn" id="btn-export-csv" type="button">Exporter en CSV</button>
+        </div>
+
         <div id="compta-empty" class="tips" style="display:none;">Aucun bon en attente.</div>
         <div id="compta-list" class="work-list"></div>
 
