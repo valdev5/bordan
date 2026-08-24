@@ -194,6 +194,11 @@ a:hover {
   color: #001018;
 }
 
+#btn-push.active {
+  border-color: var(--success);
+  color: var(--success);
+}
+
 .btn.danger {
   background: var(--danger);
   border-color: transparent;

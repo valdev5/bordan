@@ -9,6 +9,7 @@ const authRoutes = require("./src/routes/auth");
 const bonRoutes = require("./src/routes/bons");
 const auditRoutes = require("./src/routes/audit");
 const stateRoutes = require("./src/routes/state");
+const pushRoutes = require("./src/routes/push");
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/bons", bonRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/state", stateRoutes);
+app.use("/api/push", pushRoutes);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

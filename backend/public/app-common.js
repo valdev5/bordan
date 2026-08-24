@@ -215,3 +215,106 @@ window.openLightbox = window.openLightbox || function openLightbox(url) {
   overlay.addEventListener('click', () => overlay.remove());
   document.body.appendChild(overlay);
 };
+
+// Notifications push (nouveaux messages chantier)
+window.Push = (() => {
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+  }
+
+  function isSupported() {
+    return 'serviceWorker' in navigator && 'PushManager' in window;
+  }
+
+  async function getExistingSubscription() {
+    if (!isSupported()) return null;
+    const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    if (!reg) return null;
+    return reg.pushManager.getSubscription();
+  }
+
+  async function status() {
+    if (!isSupported()) return 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+    const sub = await getExistingSubscription();
+    return sub ? 'subscribed' : 'available';
+  }
+
+  async function subscribe() {
+    if (!isSupported()) throw new Error('Notifications non supportées sur ce navigateur.');
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      throw new Error('Permission refusée.');
+    }
+
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    const { publicKey } = await window.apiFetch('/push/public-key');
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+
+    await window.apiFetch('/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON() } });
+    return sub;
+  }
+
+  async function unsubscribe() {
+    const sub = await getExistingSubscription();
+    if (!sub) return;
+    await window.apiFetch('/push/unsubscribe', { method: 'POST', body: { endpoint: sub.endpoint } }).catch(() => {});
+    await sub.unsubscribe();
+  }
+
+  return { isSupported, status, subscribe, unsubscribe };
+})();
+
+// Cablage generique du bouton "#btn-push" s'il est present sur la page
+(async function initPushButton() {
+  const btn = document.getElementById('btn-push');
+  if (!btn || !window.Push.isSupported()) {
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+
+  async function refreshLabel() {
+    const state = await window.Push.status();
+    if (state === 'subscribed') {
+      btn.textContent = 'Notifications activées';
+      btn.disabled = false;
+      btn.classList.add('active');
+    } else if (state === 'denied') {
+      btn.textContent = 'Notifications bloquées';
+      btn.disabled = true;
+    } else {
+      btn.textContent = 'Activer les notifications';
+      btn.disabled = false;
+      btn.classList.remove('active');
+    }
+  }
+
+  btn.addEventListener('click', async () => {
+    const state = await window.Push.status();
+    btn.disabled = true;
+    try {
+      if (state === 'subscribed') {
+        await window.Push.unsubscribe();
+      } else {
+        await window.Push.subscribe();
+      }
+    } catch (error) {
+      alert(error.message || 'Impossible de gérer les notifications.');
+    }
+    await refreshLabel();
+  });
+
+  refreshLabel();
+})();
