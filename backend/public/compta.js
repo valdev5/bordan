@@ -247,12 +247,60 @@ function renderCompta() {
   });
 }
 
-function csvEscape(value) {
-  const str = String(value ?? '');
-  return /[;"\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+function xmlEscape(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
-function exportComptaCsv() {
+// Genere un classeur Excel (format SpreadsheetML 2003) sans dependance externe :
+// un simple fichier XML qu'Excel ouvre nativement avec les vraies colonnes,
+// contrairement au CSV qui pose parfois des soucis d'encodage/separateur.
+function buildExcelWorkbook(sheetName, header, rows) {
+  const cell = (value) => {
+    const isNumber = typeof value === 'number' && Number.isFinite(value);
+    return isNumber
+      ? `<Cell><Data ss:Type="Number">${value}</Data></Cell>`
+      : `<Cell><Data ss:Type="String">${xmlEscape(value)}</Data></Cell>`;
+  };
+
+  const headerRow = `<Row>${header.map((h) => `<Cell ss:StyleID="header"><Data ss:Type="String">${xmlEscape(h)}</Data></Cell>`).join('')}</Row>`;
+  const dataRows = rows.map((row) => `<Row>${row.map(cell).join('')}</Row>`).join('');
+
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Styles>
+    <Style ss:ID="header"><Font ss:Bold="1"/></Style>
+  </Styles>
+  <Worksheet ss:Name="${xmlEscape(sheetName)}">
+    <Table>
+      ${headerRow}
+      ${dataRows}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+}
+
+function downloadExcel(filename, xml) {
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function exportComptaExcel() {
   const all = Store.load(Store.KEY_BONS);
   const mine = all.filter((bon) => bon.status === 'facturer' && bon.admin === CURRENT_USER && !bon.archived);
 
@@ -277,19 +325,11 @@ function exportComptaCsv() {
     ];
   });
 
-  const csv = [header, ...rows].map((row) => row.map(csvEscape).join(';')).join('\r\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `a-facturer_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  const xml = buildExcelWorkbook('A facturer', header, rows);
+  downloadExcel(`a-facturer_${new Date().toISOString().slice(0, 10)}.xls`, xml);
 }
 
-document.getElementById('btn-export-csv').addEventListener('click', exportComptaCsv);
+document.getElementById('btn-export-csv').addEventListener('click', exportComptaExcel);
 
 function openPrintView(bon) {
   const devis = (Store.load(Store.KEY_DEVIS) || []).find((entry) => entry.num === bon.num_devis);
