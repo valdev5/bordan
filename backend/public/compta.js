@@ -14,6 +14,26 @@ function cleanText(value) {
   return String(value ?? '').trim();
 }
 
+function showComptaTab(name) {
+  document.querySelectorAll('.tab[data-compta-tab]').forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.comptaTab === name);
+  });
+  document.querySelectorAll('.view[id^="tab-compta-"]').forEach((view) => {
+    view.classList.toggle('show', view.id === `tab-compta-${name}`);
+  });
+}
+
+document.querySelectorAll('.tab[data-compta-tab]').forEach((tab) => {
+  tab.addEventListener('click', () => showComptaTab(tab.dataset.comptaTab));
+});
+
+function updateComptaTabBadge(id, count) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = count;
+  el.style.display = count > 0 ? '' : 'none';
+}
+
 function makePhoneDevisNum(list = Store.load(Store.KEY_DEVIS) || []) {
   const base = new Date().toISOString().slice(0, 10).replaceAll('-', '');
   const count = list.filter((devis) => String(devis.num || '').startsWith(`DV-${base}`)).length;
@@ -119,6 +139,7 @@ function renderCompta() {
   }, 0);
   document.getElementById('recap-count').textContent = `${mine.length} bon${mine.length > 1 ? 's' : ''} en attente`;
   document.getElementById('recap-hours').textContent = `${totalHoursAll} h au total`;
+  updateComptaTabBadge('tab-badge-facturer', mine.length);
 
   empty.style.display = mine.length ? 'none' : '';
 
@@ -366,6 +387,7 @@ function renderDevisCompta() {
 
   document.getElementById('devis-recap-count').textContent =
     `${mine.length} devis${mine.length > 1 ? '' : ''} en attente`;
+  updateComptaTabBadge('tab-badge-devis', mine.length);
 
   empty.style.display = mine.length ? 'none' : '';
 

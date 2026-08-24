@@ -19,8 +19,48 @@
     </div>
   </header>
 
+  <div class="tabs" style="margin:14px 16px 0;">
+    <button class="tab active" data-compta-tab="facturer">À facturer <span class="tab-badge" id="tab-badge-facturer" style="display:none;">0</span></button>
+    <button class="tab" data-compta-tab="devis">Devis <span class="tab-badge" id="tab-badge-devis" style="display:none;">0</span></button>
+    <button class="tab" data-compta-tab="nouveau">Nouveau devis</button>
+  </div>
+
   <main class="container">
-    <section class="view show">
+    <section class="view show" id="tab-compta-facturer">
+      <div class="sheet">
+        <h2 class="title">Bons « À facturer » qui me sont assignés</h2>
+
+        <div id="compta-recap" class="work-meta" style="margin-bottom:14px;">
+          <span class="badge" id="recap-count">0 bon en attente</span>
+          <span class="badge" id="recap-hours">0 h au total</span>
+          <button class="btn" id="btn-export-csv" type="button">Exporter en CSV</button>
+        </div>
+
+        <div id="compta-empty" class="tips" style="display:none;">Aucun bon en attente.</div>
+        <div id="compta-list" class="work-list"></div>
+
+        <hr style="margin:24px 0; opacity:.2">
+
+        <h2 class="title">Archivés</h2>
+        <div id="arch-empty" class="tips" style="display:none;">Aucun bon archivé.</div>
+        <div id="arch-list" class="work-list"></div>
+      </div>
+    </section>
+
+    <section class="view" id="tab-compta-devis">
+      <div class="sheet">
+        <h2 class="title">Devis qui me sont assignés</h2>
+
+        <div id="devis-recap" class="work-meta" style="margin-bottom:14px;">
+          <span class="badge" id="devis-recap-count">0 devis en attente</span>
+        </div>
+
+        <div id="devis-empty" class="tips" style="display:none;">Aucun devis en attente.</div>
+        <div id="devis-list" class="work-list"></div>
+      </div>
+    </section>
+
+    <section class="view" id="tab-compta-nouveau">
       <div class="sheet">
         <h2 class="title">Nouveau devis (appel téléphonique)</h2>
 
@@ -58,40 +98,6 @@
         <div class="actions" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
           <button class="btn primary" id="save-phone-devis">Enregistrer le devis</button>
         </div>
-      </div>
-    </section>
-
-    <section class="view show">
-      <div class="sheet">
-        <h2 class="title">Bons « À facturer » qui me sont assignés</h2>
-
-        <div id="compta-recap" class="work-meta" style="margin-bottom:14px;">
-          <span class="badge" id="recap-count">0 bon en attente</span>
-          <span class="badge" id="recap-hours">0 h au total</span>
-          <button class="btn" id="btn-export-csv" type="button">Exporter en CSV</button>
-        </div>
-
-        <div id="compta-empty" class="tips" style="display:none;">Aucun bon en attente.</div>
-        <div id="compta-list" class="work-list"></div>
-
-        <hr style="margin:24px 0; opacity:.2">
-
-        <h2 class="title">Archivés</h2>
-        <div id="arch-empty" class="tips" style="display:none;">Aucun bon archivé.</div>
-        <div id="arch-list" class="work-list"></div>
-      </div>
-    </section>
-
-    <section class="view show">
-      <div class="sheet">
-        <h2 class="title">Devis qui me sont assignés</h2>
-
-        <div id="devis-recap" class="work-meta" style="margin-bottom:14px;">
-          <span class="badge" id="devis-recap-count">0 devis en attente</span>
-        </div>
-
-        <div id="devis-empty" class="tips" style="display:none;">Aucun devis en attente.</div>
-        <div id="devis-list" class="work-list"></div>
       </div>
     </section>
   </main>
