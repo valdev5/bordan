@@ -90,27 +90,43 @@ body{
   stroke:#164a68;
   stroke-width:.4;
 }
-.fx-scene .sign-text{
-  fill:#2dd4ff;
-  font-family:Arial, sans-serif;
-  font-weight:800;
-  font-size:6.4px;
-  letter-spacing:.02em;
-  text-anchor:middle;
-  dominant-baseline:middle;
+.fx-scene .sign-logo{
   filter:
-    drop-shadow(0 0 .3px #2dd4ff)
+    drop-shadow(0 0 .3px #eafcff)
+    drop-shadow(0 0 1px #2dd4ff)
+    drop-shadow(0 0 2.4px #0ea5e9);
+}
+
+.fx-scene .sign-text{
+  font-family:'Nunito', Arial, sans-serif;
+  font-weight:900;
+  font-size:4.7px;
+  letter-spacing:.01em;
+  text-anchor:start;
+  dominant-baseline:middle;
+}
+.fx-scene .sign-text .t-borda{
+  fill:#eafcff;
+  filter:
+    drop-shadow(0 0 .3px #eafcff)
     drop-shadow(0 0 1px #0ea5e9)
     drop-shadow(0 0 2.2px #0ea5e9);
+}
+.fx-scene .sign-text .t-nova{
+  fill:#7df3ff;
+  filter:
+    drop-shadow(0 0 .3px #eafcff)
+    drop-shadow(0 0 1px #2dd4ff)
+    drop-shadow(0 0 2.4px #2dd4ff);
 }
 
 /* reflet fin qui balaie le texte a vitesse constante (via masque, net et non flou) */
 .fx-scene .sign-highlight{
-  font-family:Arial, sans-serif;
-  font-weight:800;
-  font-size:6.4px;
-  letter-spacing:.02em;
-  text-anchor:middle;
+  font-family:'Nunito', Arial, sans-serif;
+  font-weight:900;
+  font-size:4.7px;
+  letter-spacing:.01em;
+  text-anchor:start;
   dominant-baseline:middle;
   fill:#f4fdff;
   mask-image:linear-gradient(100deg, transparent 42%, #000 49%, #000 51%, transparent 58%);
