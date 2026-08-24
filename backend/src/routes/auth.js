@@ -76,6 +76,29 @@ router.delete('/users/:username', requireAuth, requireRole('manager'), (req, res
   });
 });
 
+// PATCH /api/auth/users/:username/password (manager only) - reinitialise le
+// mot de passe d'un autre compte, sans connaitre l'ancien (mot de passe oublie)
+router.patch('/users/:username/password', requireAuth, requireRole('manager'), (req, res) => {
+  const username = String(req.params.username || '').trim();
+  const newPassword = String(req.body?.newPassword || '');
+
+  if (!newPassword || newPassword.length < 4) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 4 caracteres' });
+  }
+
+  db.get('SELECT id FROM users WHERE username = ?', [username], async (err, user) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id], (err2) => {
+      if (err2) return res.status(500).json({ error: 'DB error' });
+      audit(req.user.sub, 'RESET_PASSWORD', 'USER', user.id, { username });
+      return res.json({ ok: true });
+    });
+  });
+});
+
 // PATCH /api/auth/password (n'importe quel compte connecte) - change son propre mot de passe
 router.patch('/password', requireAuth, (req, res) => {
   const currentPassword = String(req.body?.currentPassword || '');

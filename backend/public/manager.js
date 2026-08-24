@@ -29,6 +29,24 @@ $('#btn-logout')?.addEventListener('click', (event) => {
   Auth?.logout?.();
 });
 
+$('#btn-reset-user-password')?.addEventListener('click', async () => {
+  const username = prompt('Nom du compte dont il faut réinitialiser le mot de passe :');
+  if (!username) return;
+
+  const newPassword = prompt(`Nouveau mot de passe pour "${username}" (au moins 4 caractères) :`);
+  if (!newPassword) return;
+
+  try {
+    await window.apiFetch(`/auth/users/${encodeURIComponent(username.trim())}/password`, {
+      method: 'PATCH',
+      body: { newPassword },
+    });
+    alert(`Mot de passe de "${username}" réinitialisé. Communiquez-lui le nouveau mot de passe.`);
+  } catch (error) {
+    alert(error.message || 'Impossible de réinitialiser ce mot de passe.');
+  }
+});
+
 const whoShort = $('#whoami-short');
 if (whoShort) {
   whoShort.textContent = CURRENT_USER || '-';
