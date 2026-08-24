@@ -2319,12 +2319,9 @@ function renderBoard() {
       printDevisItem(devis);
     };
 
-    card.querySelector('.delete').onclick = () => {
+    card.querySelector('.delete').onclick = async () => {
       if (confirm(`Supprimer le devis no ${devis.num || ''} ?`)) {
-        Store.save(
-          Store.KEY_DEVIS,
-          devisList.filter((entry) => entry.id !== devis.id),
-        );
+        await Store.deleteItem(Store.KEY_DEVIS, devis.id);
         renderBoard();
       }
     };
@@ -2405,12 +2402,9 @@ function renderBoard() {
       printBonItem(bon);
     };
 
-    card.querySelector('.delete').onclick = () => {
+    card.querySelector('.delete').onclick = async () => {
       if (confirm(`Supprimer le bon (devis no ${bon.num_devis || ''}) ?`)) {
-        Store.save(
-          Store.KEY_BONS,
-          bonsList.filter((entry) => entry.id !== bon.id),
-        );
+        await Store.deleteItem(Store.KEY_BONS, bon.id);
         renderBoard();
       }
     };

@@ -58,6 +58,34 @@ function saveStateValue(key, value) {
   });
 }
 
+function getTombstonedIds(kind) {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT item_id FROM deleted_ids WHERE kind = ?', [kind], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(new Set((rows || []).map((row) => row.item_id)));
+    });
+  });
+}
+
+function addTombstone(kind, itemId) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT OR IGNORE INTO deleted_ids (kind, item_id) VALUES (?, ?)',
+      [kind, String(itemId)],
+      (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      },
+    );
+  });
+}
+
 router.get('/', requireAuth, async (req, res) => {
   try {
     const [devis, bons] = await Promise.all([
@@ -160,14 +188,49 @@ router.put('/:key', requireAuth, async (req, res) => {
   try {
     const previousValue = key === 'bons' ? await loadStateValue(STATE_KEYS.bons) : null;
 
-    await saveStateValue(STATE_KEYS[key], value);
-    audit(req.user.sub, 'UPSERT_SHARED_STATE', 'STATE', null, { key, count: value.length });
+    // Empeche un client dont le cache local est perime de faire revivre un
+    // element supprime entre-temps par quelqu'un d'autre (ecrasement lors
+    // d'une sauvegarde globale du tableau).
+    const tombstoned = await getTombstonedIds(key);
+    const cleanedValue = tombstoned.size
+      ? value.filter((item) => !tombstoned.has(String(item.id)))
+      : value;
+
+    await saveStateValue(STATE_KEYS[key], cleanedValue);
+    audit(req.user.sub, 'UPSERT_SHARED_STATE', 'STATE', null, { key, count: cleanedValue.length });
 
     if (key === 'bons' && previousValue) {
-      notifyNewChatMessages(previousValue, value).catch((err) => {
+      notifyNewChatMessages(previousValue, cleanedValue).catch((err) => {
         console.warn('Push notification (chat) failed', err);
       });
     }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'DB error' });
+  }
+});
+
+// DELETE /api/state/:key/:id - suppression explicite d'un element, avec
+// tombstone pour empecher qu'un client perime le ressuscite plus tard
+router.delete('/:key/:id', requireAuth, async (req, res) => {
+  const key = String(req.params.key || '').trim();
+  if (!Object.prototype.hasOwnProperty.call(STATE_KEYS, key)) {
+    return res.status(400).json({ error: 'Invalid state key' });
+  }
+
+  const id = String(req.params.id || '').trim();
+  if (!id) {
+    return res.status(400).json({ error: 'id required' });
+  }
+
+  try {
+    const current = await loadStateValue(STATE_KEYS[key]);
+    const next = current.filter((item) => String(item.id) !== id);
+
+    await addTombstone(key, id);
+    await saveStateValue(STATE_KEYS[key], next);
+    audit(req.user.sub, 'DELETE_SHARED_STATE_ITEM', 'STATE', null, { key, id });
 
     return res.json({ ok: true });
   } catch (err) {

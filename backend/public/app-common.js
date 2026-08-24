@@ -78,6 +78,21 @@ const Store = (() => {
     pendingTimers.set(key, nextTimer);
   }
 
+  async function deleteItem(key, id) {
+    const current = load(key);
+    const next = current.filter((item) => String(item.id) !== String(id));
+    writeLocal(key, next);
+    emitChange();
+
+    const serverKey = SERVER_KEYS[key];
+    const hasToken = !!localStorage.getItem('token');
+    if (serverKey && window.apiFetch && hasToken) {
+      await apiFetch(`/state/${serverKey}/${id}`, { method: 'DELETE' });
+    }
+
+    return next;
+  }
+
   function save(key, value, options = {}) {
     writeLocal(key, value);
 
@@ -164,6 +179,7 @@ const Store = (() => {
     KEY_BONS,
     load,
     save,
+    deleteItem,
     flush,
     syncFromServer,
     removeById,

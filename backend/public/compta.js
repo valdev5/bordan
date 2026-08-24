@@ -234,13 +234,12 @@ function renderCompta() {
       renderCompta();
     });
 
-    card.querySelector('[data-purge]').addEventListener('click', () => {
+    card.querySelector('[data-purge]').addEventListener('click', async () => {
       if (!confirm('Supprimer definitivement ce bon archive ?')) {
         return;
       }
 
-      const allBons = Store.load(Store.KEY_BONS).filter((entry) => entry.id !== bon.id);
-      Store.save(Store.KEY_BONS, allBons);
+      await Store.deleteItem(Store.KEY_BONS, bon.id);
       renderCompta();
     });
 

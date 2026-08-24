@@ -58,6 +58,15 @@ function initDb() {
     `);
 
     db.run(`
+      CREATE TABLE IF NOT EXISTS deleted_ids (
+        kind TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (kind, item_id)
+      )
+    `);
+
+    db.run(`
       CREATE TABLE IF NOT EXISTS calendar_tokens (
         username TEXT PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
