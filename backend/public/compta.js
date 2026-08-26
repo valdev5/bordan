@@ -89,6 +89,7 @@ document.getElementById('save-phone-devis').addEventListener('click', async () =
       'devis.code_postal': cleanText(document.getElementById('pd-cp').value),
       'devis.ville': cleanText(document.getElementById('pd-ville').value),
       'devis.tel': cleanText(document.getElementById('pd-tel').value),
+      'devis.email': cleanText(document.getElementById('pd-email').value),
       'devis.objet_demande': objet,
       'devis.notes_avant_rdv': cleanText(document.getElementById('pd-notes').value),
       'devis.signe': 'non',
@@ -111,7 +112,7 @@ document.getElementById('save-phone-devis').addEventListener('click', async () =
 
   alert('Devis enregistré. Les encadrants assignés le retrouveront dans leur espace.');
 
-  ['pd-numclient', 'pd-nom', 'pd-tel', 'pd-adresse', 'pd-cp', 'pd-ville', 'pd-objet', 'pd-notes']
+  ['pd-numclient', 'pd-nom', 'pd-tel', 'pd-email', 'pd-adresse', 'pd-cp', 'pd-ville', 'pd-objet', 'pd-notes']
     .forEach((id) => { document.getElementById(id).value = ''; });
   document.querySelectorAll('.pd-enc-team').forEach((el) => { el.checked = false; });
   initPhoneDevisForm();
