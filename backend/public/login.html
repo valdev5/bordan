@@ -156,9 +156,17 @@
   </svg>
 
   <main class="login-wrap">
-    <section class="card">
+    <section class="card" id="login-card">
       <h1>Se connecter</h1>
-      
+
+      <div class="login-error" id="login-error" role="alert">
+        <svg class="login-error-icon" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <line x1="10" y1="6" x2="10" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="10" cy="14" r="1" fill="currentColor"/>
+        </svg>
+        <span id="login-error-text"></span>
+      </div>
 
       <div class="row">
         <label for="username">Utilisateur</label>
@@ -172,7 +180,7 @@
 
       <button id="btn-login" class="btn primary">Connexion</button>
 
-     
+
     </section>
   </main>
 

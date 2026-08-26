@@ -233,8 +233,53 @@ body{
   to{opacity:1; transform:translateY(0) scale(1);}
 }
 
+.card.shake{
+  animation:card-shake .45s cubic-bezier(.36,.07,.19,.97) both;
+}
+@keyframes card-shake{
+  10%, 90%{ transform:translateX(-1px); }
+  20%, 80%{ transform:translateX(2px); }
+  30%, 50%, 70%{ transform:translateX(-4px); }
+  40%, 60%{ transform:translateX(4px); }
+}
+
+/* Bandeau d'erreur, discret, a la place d'une alert() navigateur */
+.login-error{
+  display:none;
+  align-items:center;
+  gap:8px;
+  margin:-4px 0 14px;
+  padding:9px 12px;
+  border-radius:10px;
+  background:rgba(239,68,68,.1);
+  border:1px solid rgba(239,68,68,.35);
+  color:#ff9c9c;
+  font-size:13px;
+  line-height:1.35;
+}
+.login-error.show{
+  display:flex;
+  animation:error-in .25s ease both;
+}
+.login-error-icon{
+  width:16px;
+  height:16px;
+  flex:none;
+  color:#ff6b6b;
+}
+@keyframes error-in{
+  from{ opacity:0; transform:translateY(-4px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce){
   .card{
+    animation:none;
+  }
+  .card.shake{
+    animation:none;
+  }
+  .login-error.show{
     animation:none;
   }
   .fx-scene .cloud,

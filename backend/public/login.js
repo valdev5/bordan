@@ -16,6 +16,9 @@
   const btn = document.getElementById('btn-login');
   const usernameEl = document.getElementById('username');
   const passwordEl = document.getElementById('password');
+  const card = document.getElementById('login-card');
+  const errorBox = document.getElementById('login-error');
+  const errorText = document.getElementById('login-error-text');
   const btnLabel = btn.textContent;
   let loading = false;
 
@@ -27,13 +30,31 @@
       : btnLabel;
   }
 
+  function hideError(){
+    errorBox.classList.remove('show');
+  }
+
+  function showError(message){
+    errorText.textContent = message;
+    errorBox.classList.add('show');
+
+    card.classList.remove('shake');
+    // force le reflow pour pouvoir rejouer l'animation sur des erreurs successives
+    void card.offsetWidth;
+    card.classList.add('shake');
+  }
+
+  usernameEl.addEventListener('input', hideError);
+  passwordEl.addEventListener('input', hideError);
+
   async function go(){
     if (loading) return;
 
     const username = (usernameEl.value || '').trim();
     const password = (passwordEl.value || '').trim();
-    if (!username || !password) { alert('Merci de saisir utilisateur + mot de passe'); return; }
+    if (!username || !password) { showError('Merci de saisir utilisateur et mot de passe.'); return; }
 
+    hideError();
     setLoading(true);
     try {
       const u = await Auth.login(username, password);
@@ -48,7 +69,11 @@
       location.href = dest;
     } catch(e){
       setLoading(false);
-      alert(e.message || 'Connexion impossible');
+      const message = e.message === 'Invalid credentials'
+        ? 'Identifiant ou mot de passe incorrect.'
+        : (e.message || 'Connexion impossible.');
+      showError(message);
+      passwordEl.focus();
     }
   }
 
