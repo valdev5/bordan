@@ -23,6 +23,12 @@ document.getElementById('btn-logout')?.addEventListener('click', (event) => {
 
 window.$ = window.$ || ((selector, root = document) => root.querySelector(selector));
 window.$$ = window.$$ || ((selector, root = document) => Array.from(root.querySelectorAll(selector)));
+
+// Fiches repliees par defaut (seul le resume reste visible) : quand il y a
+// plusieurs chantiers on s'y perd sinon. Un id ici = la fiche est ouverte ;
+// persiste tant que la page n'est pas rechargee, y compris a travers les
+// reconstructions periodiques de la liste.
+const expandedWorkCardIds = new Set();
 const today = () => new Date().toISOString().slice(0, 10);
 
 function isManager(user) {
@@ -361,18 +367,30 @@ function renderWork() {
     const myHoursArr = bon.hours?.[CURRENT_USER] || [];
     const myTotal = myHoursArr.reduce((sum, hour) => sum + (parseFloat(hour.h) || 0), 0);
 
+    const isExpanded = expandedWorkCardIds.has(String(bon.id));
+    const unreadCount = countUnreadForWorker(bon, cleanTextWorker(CURRENT_USER));
+    const unreadBadge = unreadCount > 0 ? `<span class="badge badge-neon">🔔 ${unreadCount}</span>` : '';
+
     const card = document.createElement('div');
     card.className = 'work-card';
     card.dataset.bonId = bon.id;
     card.innerHTML = `
-      <h3>${client}</h3>
-
-      <div class="work-meta">
-        <span class="badge">Devis no ${bon.num_devis || '-'}</span>
-        <span class="badge">${bon.status === 'facturer' ? 'A facturer' : 'En cours'}</span>
-        ${admin ? `<span class="badge">Gestionnaire: ${admin}</span>` : ''}
-        ${encadrant ? `<span class="badge">Encadrant: ${encadrant}</span>` : ''}
+      <div class="work-card-head" data-work-toggle style="cursor:pointer">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap">
+          <h3 style="margin:0">${client}</h3>
+          <button type="button" class="btn outline work-card-chevron" style="padding:4px 10px; font-size:12.5px">${isExpanded ? 'Reduire ▴' : 'Details ▾'}</button>
+        </div>
+        <div class="work-meta" style="margin-top:6px">
+          <span class="badge">Devis no ${bon.num_devis || '-'}</span>
+          <span class="badge">${bon.status === 'facturer' ? 'A facturer' : 'En cours'}</span>
+          ${unreadBadge}
+          ${admin ? `<span class="badge">Gestionnaire: ${admin}</span>` : ''}
+          ${encadrant ? `<span class="badge">Encadrant: ${encadrant}</span>` : ''}
+        </div>
+        ${!isExpanded ? `<div class="small muted" style="margin-top:4px">${short(objet, 100)}</div>` : ''}
       </div>
+
+      <div class="work-card-body" style="display:${isExpanded ? '' : 'none'}; margin-top:8px">
 
       <div class="grid-2" style="margin:8px 0">
         <div>
@@ -476,7 +494,19 @@ function renderWork() {
       <div class="small" style="margin-top:8px">Mes dernieres lignes:</div>
       <div class="small" data-wlog>-</div>
       <div class="small muted" style="margin-top:4px">Total cumule: <strong data-wtotal>${(Math.round(myTotal * 100) / 100).toFixed(2)} h</strong></div>
+
+      </div>
     `;
+
+    card.querySelector('[data-work-toggle]').addEventListener('click', () => {
+      const key = String(bon.id);
+      if (expandedWorkCardIds.has(key)) {
+        expandedWorkCardIds.delete(key);
+      } else {
+        expandedWorkCardIds.add(key);
+      }
+      renderWork();
+    });
 
     const logBox = card.querySelector('[data-wlog]');
     const totalBox = card.querySelector('[data-wtotal]');
