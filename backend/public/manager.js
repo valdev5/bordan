@@ -47,6 +47,27 @@ $('#btn-reset-user-password')?.addEventListener('click', async () => {
   }
 });
 
+$('#btn-change-user-role')?.addEventListener('click', async () => {
+  const username = prompt('Nom du compte dont il faut changer le rôle :');
+  if (!username) return;
+
+  const role = (prompt('Nouveau rôle : manager, worker ou compta ?') || '').trim().toLowerCase();
+  if (!['manager', 'worker', 'compta'].includes(role)) {
+    alert('Rôle invalide. Tapez exactement : manager, worker ou compta.');
+    return;
+  }
+
+  try {
+    await window.apiFetch(`/auth/users/${encodeURIComponent(username.trim())}/role`, {
+      method: 'PATCH',
+      body: { role },
+    });
+    alert(`Rôle de "${username}" changé en "${role}". Il faut qu'il se reconnecte pour que ça prenne effet.`);
+  } catch (error) {
+    alert(error.message || 'Impossible de changer ce rôle.');
+  }
+});
+
 const whoShort = $('#whoami-short');
 if (whoShort) {
   whoShort.textContent = CURRENT_USER || '-';
@@ -278,6 +299,12 @@ function getPreferredEncadrants(item = {}) {
   return encadrants.length ? encadrants : [item.encadrant || CURRENT_USER].filter(Boolean);
 }
 
+// Visibilite supplementaire : certains encadrants voient aussi les fiches
+// d'un autre encadrant (ex: Karine seconde Laurent).
+const EXTRA_CHEF_VISIBILITY = {
+  karine: ['laurent'],
+};
+
 function belongsToChef(item) {
   const chef = cleanText(CURRENT_USER);
   if (!chef) {
@@ -285,13 +312,15 @@ function belongsToChef(item) {
   }
 
   const chefLower = chef.toLowerCase();
+  const namesToMatch = [chefLower, ...(EXTRA_CHEF_VISIBILITY[chefLower] || [])];
+
   const encadrants = getEncadrantsForItem(item);
-  if (encadrants.some((name) => name.toLowerCase() === chefLower)) {
+  if (encadrants.some((name) => namesToMatch.includes(name.toLowerCase()))) {
     return true;
   }
 
   const team = Array.isArray(item.team) ? item.team : [];
-  return team.some((name) => cleanText(name).toLowerCase() === chefLower);
+  return team.some((name) => namesToMatch.includes(cleanText(name).toLowerCase()));
 }
 
 function removeDevisByNum(num) {

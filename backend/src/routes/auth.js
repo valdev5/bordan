@@ -99,6 +99,27 @@ router.patch('/users/:username/password', requireAuth, requireRole('manager'), (
   });
 });
 
+// PATCH /api/auth/users/:username/role (manager only) - change le role d'un compte
+router.patch('/users/:username/role', requireAuth, requireRole('manager'), (req, res) => {
+  const username = String(req.params.username || '').trim();
+  const role = String(req.body?.role || '').trim();
+
+  if (!['manager', 'worker', 'compta'].includes(role)) {
+    return res.status(400).json({ error: 'role must be manager, worker or compta' });
+  }
+
+  db.get('SELECT id FROM users WHERE username = ?', [username], (err, user) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    db.run('UPDATE users SET role = ? WHERE id = ?', [role, user.id], (err2) => {
+      if (err2) return res.status(500).json({ error: 'DB error' });
+      audit(req.user.sub, 'CHANGE_ROLE', 'USER', user.id, { username, role });
+      return res.json({ ok: true, username, role });
+    });
+  });
+});
+
 // PATCH /api/auth/password (n'importe quel compte connecte) - change son propre mot de passe
 router.patch('/password', requireAuth, (req, res) => {
   const currentPassword = String(req.body?.currentPassword || '');

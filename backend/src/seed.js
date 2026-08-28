@@ -12,6 +12,7 @@ const users = [
   { username: 'Cédric M', role: 'manager' },
   { username: 'Cédric A', role: 'manager' },
   { username: 'Vivien', role: 'manager' },
+  { username: 'Karine', role: 'manager' },
 
   // workers
   
@@ -50,8 +51,7 @@ const users = [
 
   // compta
   { username: 'Sophie', role: 'compta' },
-  { username: 'Catherine', role: 'compta' },
-  { username: 'Karine', role: 'compta' }
+  { username: 'Catherine', role: 'compta' }
 ];
 
 async function run() {
