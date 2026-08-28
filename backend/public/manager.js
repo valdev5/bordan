@@ -2893,8 +2893,23 @@ function attachPostalLookup(postalFieldName, cityFieldName) {
   attachPostalLookup(postalFieldName, cityFieldName);
 });
 
+// Le tableau se reconstruit entierement a chaque renderBoard() (innerHTML =
+// '' puis recreation des cartes). Si un select/menu de carte est ouvert au
+// moment ou l'actualisation automatique (toutes les 5s) se declenche, sa
+// disparition du DOM ferme le menu sous les yeux de l'utilisateur -> on
+// saute simplement ce cycle de rafraichissement quand un champ du tableau a
+// le focus, et on le rattrapera au prochain passage.
+function boardHasFocusedControl() {
+  const active = document.activeElement;
+  const board = $('#tab-board');
+  if (!active || !board || !board.contains(active)) {
+    return false;
+  }
+  return ['SELECT', 'INPUT', 'TEXTAREA'].includes(active.tagName);
+}
+
 window.addEventListener('shared-store-changed', () => {
-  if ($('#tab-board')?.classList.contains('show')) {
+  if ($('#tab-board')?.classList.contains('show') && !boardHasFocusedControl()) {
     renderBoard();
   }
   if ($('#tab-planning')?.classList.contains('show')) {
@@ -2919,7 +2934,7 @@ Store.syncFromServer?.()
 setInterval(() => {
   Store.syncFromServer?.()
     .then(() => {
-      if ($('#tab-board')?.classList.contains('show')) {
+      if ($('#tab-board')?.classList.contains('show') && !boardHasFocusedControl()) {
         renderBoard();
       }
     })
