@@ -2418,7 +2418,7 @@ $('#new-bon-direct-tab')?.addEventListener('click', (event) => {
   showTab('bon');
 });
 
-$('#save-bon-direct')?.addEventListener('click', () => {
+$('#save-bon-direct')?.addEventListener('click', async () => {
   const raw = serializeNamedFields('direct');
   const encadrants = getCheckedValues('.direct-enc-team');
   const team = getCheckedValues('.direct-aff-team');
@@ -2472,7 +2472,36 @@ $('#save-bon-direct')?.addEventListener('click', () => {
   const list = Store.load(Store.KEY_BONS) || [];
   Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis'));
 
-  alert('BT depannage cree.');
+  const saved = Store.load(Store.KEY_BONS).find((entry) => entry.num_devis === num);
+
+  // Si l'encadrant fait l'intervention lui-meme et vient de la terminer, il
+  // peut faire signer le client tout de suite plutot que de rouvrir le bon
+  // plus tard depuis "Charger un bon...".
+  if (saved && confirm("BT depannage cree. Terminez-vous l'intervention maintenant (signature client) ?")) {
+    const result = await window.openSignatureFlow();
+    if (result) {
+      const allBons = Store.load(Store.KEY_BONS);
+      const index = allBons.findIndex((entry) => entry.id === saved.id);
+      if (index >= 0) {
+        const copy = { ...allBons[index] };
+        copy.signature = {
+          present: result.present,
+          dataUrl: result.present ? result.dataUrl : null,
+          from: CURRENT_USER,
+          ts: Date.now(),
+          date: new Date().toLocaleString(),
+        };
+        copy.progress = copy.progress || {};
+        copy.progress[CURRENT_USER] = 'Termine';
+        copy.status = 'facturer';
+        allBons[index] = copy;
+        Store.save(Store.KEY_BONS, allBons);
+      }
+    }
+  } else {
+    alert('BT depannage cree.');
+  }
+
   resetDirectBonForm();
   showTab('board');
 });
