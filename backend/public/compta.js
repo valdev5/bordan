@@ -568,6 +568,7 @@ document.getElementById('save-bon-direct-compta').addEventListener('click', () =
       'bon.num_devis': num,
       'bon.date_devis': raw['direct.date'] || new Date().toISOString().slice(0, 10),
       'bon.client_nom': raw['direct.client_nom'] || '',
+      'bon.client_num': raw['direct.client_num'] || '',
       'bon.client_tel': raw['direct.client_tel'] || '',
       'bon.client_adresse': raw['direct.client_adresse'] || '',
       'bon.client_code_postal': raw['direct.client_code_postal'] || '',
