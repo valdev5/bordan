@@ -47,6 +47,13 @@ $('#btn-reset-user-password')?.addEventListener('click', async () => {
   }
 });
 
+if (cleanText(CURRENT_USER).toLowerCase() === 'karine') {
+  const comptaSpaceLink = $('#btn-compta-space');
+  if (comptaSpaceLink) {
+    comptaSpaceLink.style.display = '';
+  }
+}
+
 $('#btn-change-user-role')?.addEventListener('click', async () => {
   const username = prompt('Nom du compte dont il faut changer le rôle :');
   if (!username) return;

@@ -27,6 +27,22 @@ document.querySelectorAll('.tab[data-compta-tab]').forEach((tab) => {
   tab.addEventListener('click', () => showComptaTab(tab.dataset.comptaTab));
 });
 
+// Karine est manager mais garde un pied dans l'espace compta, juste pour
+// suivre "A facturer" et "Devis" — la creation de bons se fait deja depuis
+// son espace manager, inutile de la dupliquer ici.
+if (cleanText(CURRENT_USER).toLowerCase() === 'karine') {
+  document.querySelectorAll('.tab[data-compta-tab]').forEach((tab) => {
+    if (!['facturer', 'devis'].includes(tab.dataset.comptaTab)) {
+      tab.style.display = 'none';
+    }
+  });
+
+  const managerSpaceLink = document.getElementById('btn-manager-space');
+  if (managerSpaceLink) {
+    managerSpaceLink.style.display = '';
+  }
+}
+
 function updateComptaTabBadge(id, count) {
   const el = document.getElementById(id);
   if (!el) return;
