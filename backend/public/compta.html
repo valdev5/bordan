@@ -196,6 +196,25 @@
           <div class="row"><label>Code postal</label><input name="bon.client_code_postal" type="text"></div>
           <div class="row"><label>Ville</label><input name="bon.client_ville" type="text"></div>
         </div>
+
+        <!-- Adresse chantier différente -->
+        <fieldset>
+          <legend>Adresse chantier</legend>
+          <label><input type="checkbox" name="bon.adresse_chantier_diff" id="cb-adrdiff"> Adresse chantier différente</label>
+          <div id="cb-bloc-chantier" style="display:none; margin-top:8px">
+            <div class="row"><label>Adresse chantier</label><input name="bon.adresse_chantier" type="text"></div>
+            <div class="grid-2">
+              <div class="row"><label>Code postal chantier</label><input name="bon.chantier_code_postal" type="text"></div>
+              <div class="row"><label>Ville chantier</label><input name="bon.chantier_ville" type="text"></div>
+            </div>
+            <div class="grid-2">
+              <div class="row"><label>Nom locataire</label><input name="bon.nom_locataire" type="text"></div>
+              <div class="row"><label>Téléphone locataire</label><input name="bon.tel_locataire" type="tel"></div>
+            </div>
+            <div class="row"><label>Remarques chantier</label><textarea name="bon.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
+          </div>
+        </fieldset>
+
         <div class="row"><label>Travaux à réaliser</label><textarea name="bon.objet" rows="3" placeholder="Description du dépannage / chantier…"></textarea></div>
         <div class="row"><label>Détails</label><textarea name="bon.details" rows="3" placeholder="Informations complémentaires…"></textarea></div>
 
@@ -283,23 +302,6 @@
           </div>
         </fieldset>
 
-        <!-- Adresse chantier différente -->
-        <fieldset>
-          <legend>Adresse chantier</legend>
-          <label><input type="checkbox" name="bon.adresse_chantier_diff" id="cb-adrdiff"> Adresse chantier différente</label>
-          <div id="cb-bloc-chantier" style="display:none; margin-top:8px">
-            <div class="row"><label>Adresse chantier</label><input name="bon.adresse_chantier" type="text"></div>
-            <div class="grid-2">
-              <div class="row"><label>Code postal chantier</label><input name="bon.chantier_code_postal" type="text"></div>
-              <div class="row"><label>Ville chantier</label><input name="bon.chantier_ville" type="text"></div>
-            </div>
-            <div class="grid-2">
-              <div class="row"><label>Nom locataire</label><input name="bon.nom_locataire" type="text"></div>
-              <div class="row"><label>Téléphone locataire</label><input name="bon.tel_locataire" type="tel"></div>
-            </div>
-            <div class="row"><label>Remarques chantier</label><textarea name="bon.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
-          </div>
-        </fieldset>
 
         <p class="small muted">Les heures, photos et messages chantier se remplissent depuis l'espace manager une fois l'intervention en cours.</p>
 
