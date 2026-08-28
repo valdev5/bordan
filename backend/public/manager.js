@@ -1594,6 +1594,10 @@ document.readyState !== 'loading'
   ? initDevisDefaults()
   : document.addEventListener('DOMContentLoaded', initDevisDefaults);
 
+document.readyState !== 'loading'
+  ? resetDevisGalleryEmpty()
+  : document.addEventListener('DOMContentLoaded', resetDevisGalleryEmpty);
+
 setTimeout(() => {
   if (!getSelectedEncadrants().length && CURRENT_USER) {
     setSelectedEncadrants([CURRENT_USER]);
@@ -1616,6 +1620,7 @@ function openDevis(item) {
   }
 
   currentDevisId = item.id;
+  initDevisGallery(item);
   showTab('devis');
   initDevisDefaults();
   renderClientHistory(item.client || item.raw?.['devis.nom'] || '', 'devis', 'devis', item.id);
@@ -1935,6 +1940,125 @@ function initManagerGallery(bon) {
         });
         allBons[index] = updated;
         Store.save(Store.KEY_BONS, allBons);
+      }
+    } catch (error) {
+      console.warn(error);
+      alert("Erreur lors de l'ajout d'une photo.");
+    } finally {
+      addButton.disabled = false;
+      addButton.textContent = 'Ajouter des photos';
+      renderGallery();
+    }
+  };
+}
+
+// Un devis pas encore enregistre n'a pas d'id : les photos doivent rester
+// desactivees tant qu'il n'a pas ete sauvegarde une premiere fois.
+function resetDevisGalleryEmpty() {
+  const grid = $('#dev-gallery');
+  const empty = $('#dev-gallery-empty');
+  const addButton = $('#dev-photo-add');
+
+  if (grid) grid.innerHTML = '';
+  if (empty) {
+    empty.textContent = 'Enregistrez le devis pour activer les photos.';
+    empty.style.display = '';
+  }
+  if (addButton) addButton.disabled = true;
+}
+
+function initDevisGallery(devis) {
+  const grid = $('#dev-gallery');
+  const empty = $('#dev-gallery-empty');
+  const input = $('#dev-photo-input');
+  const addButton = $('#dev-photo-add');
+
+  if (!grid || !empty || !input || !addButton) {
+    return;
+  }
+
+  addButton.disabled = false;
+  empty.textContent = 'Aucune photo.';
+
+  const who = cleanText(CURRENT_USER) || 'Encadrant';
+
+  function renderGallery() {
+    const freshDevis = Store.load(Store.KEY_DEVIS).find((entry) => entry.id === devis.id) || devis;
+    const photos = Array.isArray(freshDevis.photos) ? freshDevis.photos : [];
+
+    empty.style.display = photos.length ? 'none' : '';
+    grid.innerHTML = photos
+      .map(
+        (photo) => `
+          <div class="gallery-item" data-id="${photo.id}">
+            <img src="${photo.dataUrl}" alt="Photo devis" class="gallery-thumb">
+            <button type="button" class="gallery-remove" title="Supprimer">&times;</button>
+          </div>
+        `,
+      )
+      .join('');
+
+    grid.querySelectorAll('.gallery-thumb').forEach((img) => {
+      img.addEventListener('click', () => window.openLightbox(img.src));
+    });
+
+    grid.querySelectorAll('.gallery-remove').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = button.closest('.gallery-item')?.dataset.id;
+        if (!id || !confirm('Supprimer cette photo ?')) {
+          return;
+        }
+
+        const allDevis = Store.load(Store.KEY_DEVIS);
+        const index = allDevis.findIndex((entry) => entry.id === devis.id);
+        if (index < 0) {
+          return;
+        }
+
+        const updated = { ...allDevis[index] };
+        updated.photos = (updated.photos || []).filter((photo) => photo.id !== id);
+        allDevis[index] = updated;
+        Store.save(Store.KEY_DEVIS, allDevis);
+        renderGallery();
+      });
+    });
+  }
+
+  renderGallery();
+
+  addButton.onclick = () => input.click();
+
+  input.onchange = async () => {
+    const files = Array.from(input.files || []);
+    input.value = '';
+    if (!files.length) {
+      return;
+    }
+
+    addButton.disabled = true;
+    addButton.textContent = 'Ajout en cours...';
+
+    try {
+      for (const file of files) {
+        const dataUrl = await window.compressImageFile(file);
+
+        const allDevis = Store.load(Store.KEY_DEVIS);
+        const index = allDevis.findIndex((entry) => entry.id === devis.id);
+        if (index < 0) {
+          continue;
+        }
+
+        const updated = { ...allDevis[index] };
+        updated.photos = Array.isArray(updated.photos) ? updated.photos : [];
+        updated.photos.push({
+          id: window.uid(),
+          from: who,
+          ts: Date.now(),
+          date: new Date().toLocaleString(),
+          dataUrl,
+        });
+        allDevis[index] = updated;
+        Store.save(Store.KEY_DEVIS, allDevis);
       }
     } catch (error) {
       console.warn(error);

@@ -228,6 +228,17 @@
           </div>
         </fieldset>
 
+        <!-- Photos devis -->
+        <fieldset>
+          <legend>Photos</legend>
+          <div class="gallery" id="dev-gallery"></div>
+          <div class="small muted" id="dev-gallery-empty" style="margin:6px 0">Enregistrez le devis pour activer les photos.</div>
+          <div style="margin-top:8px">
+            <input type="file" id="dev-photo-input" accept="image/*" multiple style="display:none">
+            <button type="button" class="btn" id="dev-photo-add" disabled>Ajouter des photos</button>
+          </div>
+        </fieldset>
+
         <div class="actions" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
           <button class="btn outline" id="load-devis">Charger un devis…</button>
           <button class="btn primary" id="save-devis">Enregistrer le devis</button>
