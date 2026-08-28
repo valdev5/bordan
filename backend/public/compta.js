@@ -194,6 +194,243 @@ document.getElementById('load-devis-compta').addEventListener('click', () => {
   showComptaTab('nouveau');
 });
 
+/* Bon de travail (creation/edition, sans heures/photos/chat/materiel :
+   ca se remplit depuis l'espace manager une fois l'intervention en cours) */
+let currentComptaBonId = null;
+
+const cbRdvPlusBody = document.getElementById('cb-rdv-plus-body');
+
+function cbAddRDV(date = '', heure = '') {
+  if (!cbRdvPlusBody) return;
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td><input type="date" value="${date || ''}"></td>
+    <td><input type="time" value="${heure || ''}"></td>
+    <td><button class="btn danger" type="button">x</button></td>
+  `;
+  row.querySelector('button').onclick = () => row.remove();
+  cbRdvPlusBody.appendChild(row);
+}
+
+function cbResetRdvRows() {
+  if (cbRdvPlusBody) cbRdvPlusBody.innerHTML = '';
+}
+
+function cbLoadRdvRows(rows = []) {
+  cbResetRdvRows();
+  rows.forEach((row) => cbAddRDV(row.date, row.heure));
+}
+
+function cbCollectRdvRows() {
+  return [...(cbRdvPlusBody?.querySelectorAll('tr') || [])].map((row) => {
+    const [date, heure] = [...row.querySelectorAll('input')].map((input) => input.value);
+    return { date, heure };
+  });
+}
+
+document.getElementById('cb-add-rdv').addEventListener('click', (event) => {
+  event.preventDefault();
+  cbAddRDV();
+});
+
+function cbGetCheckedValues(selector) {
+  return normalizeListCompta($$c(selector).filter((f) => f.checked).map((f) => f.value));
+}
+
+function cbSetCheckedValues(selector, values) {
+  const selected = new Set(normalizeListCompta(values));
+  $$c(selector).forEach((f) => { f.checked = selected.has(f.value); });
+}
+
+function makeDirectBTNumCompta(list = Store.load(Store.KEY_BONS) || []) {
+  const base = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+  const count = list.filter((bon) => String(bon.num_devis || '').startsWith(`BT-${base}`)).length;
+  return `BT-${base}-${String(count + 1).padStart(3, '0')}`;
+}
+
+// Reprend la meme logique de detection de conflit que le manager (une
+// personne deja affectee ailleurs le meme jour de RDV)
+function cbRdvEntriesFor(bon) {
+  const raw = bon.raw || {};
+  const entries = [];
+  if (raw['bon.rdv']) entries.push({ date: raw['bon.rdv'] });
+  (Array.isArray(bon.rdv_plus) ? bon.rdv_plus : []).forEach((rdv) => {
+    if (rdv.date) entries.push({ date: rdv.date });
+  });
+  return entries;
+}
+
+function cbFindAssignmentConflicts(item, allBons) {
+  const team = Array.isArray(item.team) ? item.team : [];
+  const myDates = new Set(cbRdvEntriesFor(item).map((e) => e.date));
+  if (!team.length || !myDates.size) return [];
+
+  const conflicts = [];
+  allBons.forEach((other) => {
+    if (item.id != null && String(other.id) === String(item.id)) return;
+    const otherTeam = Array.isArray(other.team) ? other.team : [];
+    const otherDates = cbRdvEntriesFor(other).map((e) => e.date);
+    team.forEach((person) => {
+      if (!otherTeam.includes(person)) return;
+      otherDates.forEach((date) => {
+        if (myDates.has(date)) conflicts.push({ person, date, client: other.client || 'Client ?' });
+      });
+    });
+  });
+  return conflicts;
+}
+
+function resetComptaBonForm() {
+  currentComptaBonId = null;
+  $$c('#tab-compta-bon [name^="bon."]').forEach((field) => {
+    if (field.type === 'checkbox' || field.type === 'radio') field.checked = false;
+    else field.value = '';
+  });
+  document.getElementById('cb-admin').value = '';
+  cbSetCheckedValues('.cb-aff-team', []);
+  cbSetCheckedValues('.cb-enc-team', []);
+  cbResetRdvRows();
+  document.getElementById('cb-bloc-chantier').style.display = 'none';
+}
+
+document.getElementById('save-bon-compta').addEventListener('click', () => {
+  const raw = serializeNamedFields('bon');
+  const list = Store.load(Store.KEY_BONS);
+
+  if (!raw['bon.num_devis']) {
+    raw['bon.num_devis'] = makeDirectBTNumCompta(list);
+  }
+
+  const current = currentComptaBonId
+    ? list.find((bon) => bon.id === currentComptaBonId)
+    : list.find((bon) => bon.num_devis === raw['bon.num_devis']);
+
+  const team = cbGetCheckedValues('.cb-aff-team');
+  const admin = cleanText(document.getElementById('cb-admin').value || current?.admin);
+  const encadrants = normalizeListCompta([
+    ...cbGetCheckedValues('.cb-enc-team'),
+    ...(current?.encadrants || []),
+    ...(current?.encadrant ? [current.encadrant] : []),
+  ]);
+
+  const item = {
+    ...(current || {}),
+    id: currentComptaBonId || current?.id || undefined,
+    type: 'bon',
+    num_devis: cleanText(raw['bon.num_devis']),
+    client: cleanText(raw['bon.client_nom']),
+    objet: cleanText(raw['bon.objet']),
+    rdv_plus: cbCollectRdvRows(),
+    pipe: current?.pipe || 'b-pret',
+    status: current?.status || (current?.pipe === 'b-facturer' ? 'facturer' : 'bons'),
+    team: team.length ? team : normalizeListCompta(current?.team || []),
+    admin,
+    encadrants,
+    encadrant: encadrants[0] || current?.encadrant || '',
+    raw: {
+      ...raw,
+      'bon.admin': admin,
+      'bon.encadrants': encadrants.join('|'),
+      'bon.encadrant': encadrants[0] || '',
+    },
+  };
+
+  if (!item.client) {
+    alert('Le nom du client est requis.');
+    return;
+  }
+
+  const conflicts = cbFindAssignmentConflicts(item, list);
+  if (conflicts.length) {
+    const lines = conflicts
+      .map((c) => `- ${c.person} le ${c.date} (déjà sur "${c.client}")`)
+      .join('\n');
+    if (!confirm(`Conflit d'affectation détecté :\n${lines}\n\nEnregistrer quand même ?`)) {
+      return;
+    }
+  }
+
+  Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis', currentComptaBonId));
+
+  alert('Bon enregistré.');
+  resetComptaBonForm();
+});
+
+document.getElementById('load-bon-compta').addEventListener('click', () => {
+  const num = prompt('N° de devis rattaché au bon ?');
+  if (!num) return;
+
+  const found = Store.load(Store.KEY_BONS).find((bon) => bon.num_devis === num);
+  if (!found) {
+    alert('Bon introuvable.');
+    return;
+  }
+
+  applyRawValuesCompta(found.raw || {});
+  cbSetCheckedValues('.cb-aff-team', found.team || []);
+  cbSetCheckedValues('.cb-enc-team', found.encadrants?.length ? found.encadrants : (found.encadrant ? [found.encadrant] : []));
+  document.getElementById('cb-admin').value = found.raw?.['bon.admin'] || found.admin || '';
+  document.getElementById('cb-bloc-chantier').style.display = found.raw?.['bon.adresse_chantier_diff'] === 'oui' ? '' : 'none';
+  cbLoadRdvRows(found.rdv_plus || []);
+  currentComptaBonId = found.id;
+  showComptaTab('bon');
+});
+
+/* BT depannage direct */
+document.getElementById('save-bon-direct-compta').addEventListener('click', () => {
+  const raw = serializeNamedFields('direct');
+  const encadrants = cbGetCheckedValues('.cb-direct-enc-team');
+  const team = cbGetCheckedValues('.cb-direct-aff-team');
+  const num = cleanText(raw['direct.num_bt']) || makeDirectBTNumCompta();
+  const urgence = cleanText(raw['direct.urgence']) || 'normal';
+  const objetBase = cleanText(raw['direct.objet']);
+  const objet = cleanText(`[DEPANNAGE ${urgence}] ${objetBase}`);
+
+  const item = {
+    id: undefined,
+    type: 'bon',
+    num_devis: num,
+    client: cleanText(raw['direct.client_nom']),
+    objet,
+    pipe: 'b-pret',
+    status: 'bons',
+    team,
+    admin: '',
+    encadrants,
+    encadrant: encadrants[0] || '',
+    lignes: [],
+    rdv_plus: [],
+    raw: {
+      'bon.num_devis': num,
+      'bon.date_devis': raw['direct.date'] || new Date().toISOString().slice(0, 10),
+      'bon.client_nom': raw['direct.client_nom'] || '',
+      'bon.client_tel': raw['direct.client_tel'] || '',
+      'bon.client_adresse': raw['direct.client_adresse'] || '',
+      'bon.client_code_postal': raw['direct.client_code_postal'] || '',
+      'bon.client_ville': raw['direct.client_ville'] || '',
+      'bon.objet': objet,
+      'bon.encadrants': encadrants.join('|'),
+      'bon.encadrant': encadrants[0] || '',
+    },
+  };
+
+  if (!item.client) {
+    alert('Nom client obligatoire.');
+    return;
+  }
+
+  const list = Store.load(Store.KEY_BONS) || [];
+  Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis'));
+
+  alert('BT dépannage créé.');
+  $$c('#tab-compta-bt-depannage [name^="direct."]').forEach((field) => {
+    if (field.type === 'checkbox' || field.type === 'radio') field.checked = false;
+    else field.value = '';
+  });
+  cbSetCheckedValues('.cb-direct-enc-team', []);
+  cbSetCheckedValues('.cb-direct-aff-team', []);
+});
+
 function renderCompta() {
   const wrap = document.getElementById('compta-list');
   const empty = document.getElementById('compta-empty');

@@ -35,6 +35,8 @@
     <button class="tab active" data-compta-tab="facturer">À facturer <span class="tab-badge" id="tab-badge-facturer" style="display:none;">0</span></button>
     <button class="tab" data-compta-tab="devis">Devis <span class="tab-badge" id="tab-badge-devis" style="display:none;">0</span></button>
     <button class="tab" data-compta-tab="nouveau">Nouveau devis</button>
+    <button class="tab" data-compta-tab="bon">Bon de travail</button>
+    <button class="tab" data-compta-tab="bt-depannage">BT dépannage</button>
   </div>
 
   <main class="container">
@@ -152,6 +154,229 @@
         </div>
       </div>
     </section>
+
+    <section class="view" id="tab-compta-bon">
+      <div class="sheet">
+        <h2 class="title">Bon de travail</h2>
+
+        <div class="grid-3">
+          <div class="row"><label>N° de devis rattaché</label><input name="bon.num_devis" type="text"></div>
+          <div class="row"><label>Date du devis</label><input name="bon.date_devis" type="date"></div>
+          <div class="row"><label>Acompte</label><select name="bon.acompte"><option value="">—</option><option value="Oui">Oui</option><option value="Non">Non</option></select></div>
+        </div>
+
+        <div class="grid-3">
+          <div class="row"><label>Client – Nom</label><input name="bon.client_nom" type="text"></div>
+          <div class="row"><label>Client – N°</label><input name="bon.client_num" type="text"></div>
+          <div class="row"><label>Téléphone</label><input name="bon.client_tel" type="tel"></div>
+        </div>
+
+        <div class="row"><label>Adresse</label><input name="bon.client_adresse" type="text"></div>
+        <div class="grid-2">
+          <div class="row"><label>Code postal</label><input name="bon.client_code_postal" type="text"></div>
+          <div class="row"><label>Ville</label><input name="bon.client_ville" type="text"></div>
+        </div>
+        <div class="row"><label>Travaux à réaliser</label><textarea name="bon.objet" rows="3" placeholder="Description du dépannage / chantier…"></textarea></div>
+        <div class="row"><label>Détails</label><textarea name="bon.details" rows="3" placeholder="Informations complémentaires…"></textarea></div>
+
+        <fieldset>
+          <legend>RDV initial</legend>
+          <div class="grid-2">
+            <div class="row"><label>Date RDV</label><input name="bon.rdv" type="date"></div>
+            <div class="row"><label>Heure RDV</label><input name="bon.rdv_heure" type="time"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>RDV supplémentaires (date + heure)</legend>
+          <div class="table-responsive">
+            <table>
+              <thead><tr><th>Date</th><th>Heure</th><th></th></tr></thead>
+              <tbody id="cb-rdv-plus-body"></tbody>
+            </table>
+          </div>
+          <div class="actions left"><button class="btn" type="button" id="cb-add-rdv">Ajouter un RDV</button></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Affectation & Gestion</legend>
+          <div class="row">
+            <label>Équipe affectée</label>
+            <div class="small muted" style="margin-bottom:4px">Charbo</div>
+            <div class="chips">
+              <label><input type="checkbox" class="cb-aff-team" value="Alexy"><span>Alexy</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Thomas"><span>Thomas</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Augustin"><span>Augustin</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Pierre-Clément"><span>Pierre-Clément</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Valentin"><span>Valentin</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Benoit"><span>Benoit</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Naiki"><span>Naiki</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Burak"><span>Burak</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Bertrand"><span>Bertrand</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Maxence"><span>Maxence</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Olivier"><span>Olivier</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Edgar"><span>Edgar</span></label>
+            </div>
+
+            <div class="small muted" style="margin:10px 0 4px">Tarare</div>
+            <div class="chips">
+              <label><input type="checkbox" class="cb-aff-team" value="Denis"><span>Denis</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Bachir"><span>Bachir</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Olivier"><span>Olivier</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Fabrice"><span>Fabrice</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Mazlum"><span>Mazlum</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Omer"><span>Omer</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Lucas"><span>Lucas</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Thierry"><span>Thierry</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Anthony"><span>Anthony</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Gérard"><span>Gérard</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Julien"><span>Julien</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Philippe"><span>Philippe</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Cheik"><span>Cheik</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Ahmed"><span>Ahmed</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Yoseane"><span>Yoseane</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Chris"><span>Chris</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Wakary"><span>Wakary</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="ThomasV"><span>ThomasV</span></label>
+              <label><input type="checkbox" class="cb-aff-team" value="Christophe"><span>Christophe</span></label>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="row"><label>Encadrants ayant accès au bon</label>
+              <div class="chips">
+                <label><input type="checkbox" class="cb-enc-team" value="Laurent"><span>Laurent</span></label>
+                <label><input type="checkbox" class="cb-enc-team" value="Cédric M"><span>Cédric M</span></label>
+                <label><input type="checkbox" class="cb-enc-team" value="Cédric A"><span>Cédric A</span></label>
+                <label><input type="checkbox" class="cb-enc-team" value="Vivien"><span>Vivien</span></label>
+                <label><input type="checkbox" class="cb-enc-team" value="Karine"><span>Karine</span></label>
+              </div>
+            </div>
+            <div class="row"><label>Envoyer à la compta</label>
+              <select id="cb-admin">
+                <option value="">—</option><option>Sophie</option><option>Catherine</option><option>Karine</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Adresse chantier différente -->
+        <fieldset>
+          <legend>Adresse chantier</legend>
+          <label><input type="checkbox" name="bon.adresse_chantier_diff" id="cb-adrdiff"> Adresse chantier différente</label>
+          <div id="cb-bloc-chantier" style="display:none; margin-top:8px">
+            <div class="row"><label>Adresse chantier</label><input name="bon.adresse_chantier" type="text"></div>
+            <div class="grid-2">
+              <div class="row"><label>Code postal chantier</label><input name="bon.chantier_code_postal" type="text"></div>
+              <div class="row"><label>Ville chantier</label><input name="bon.chantier_ville" type="text"></div>
+            </div>
+            <div class="grid-2">
+              <div class="row"><label>Nom locataire</label><input name="bon.nom_locataire" type="text"></div>
+              <div class="row"><label>Téléphone locataire</label><input name="bon.tel_locataire" type="tel"></div>
+            </div>
+            <div class="row"><label>Remarques chantier</label><textarea name="bon.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
+          </div>
+        </fieldset>
+
+        <p class="small muted">Les heures, photos et messages chantier se remplissent depuis l'espace manager une fois l'intervention en cours.</p>
+
+        <div class="actions" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
+          <button class="btn outline" id="load-bon-compta">Charger un bon…</button>
+          <button class="btn primary" id="save-bon-compta">Enregistrer le bon</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="tab-compta-bt-depannage">
+      <div class="sheet">
+        <h2 class="title">BT dépannage direct</h2>
+
+        <div class="grid-3">
+          <div class="row"><label>N° BT</label><input name="direct.num_bt" type="text" readonly></div>
+          <div class="row"><label>Date</label><input name="direct.date" type="date"></div>
+          <div class="row">
+            <label>Urgence</label>
+            <select name="direct.urgence">
+              <option value="normal">Normal</option>
+              <option value="urgent">Urgent</option>
+              <option value="tres urgent">Très urgent</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="row"><label>Client – Nom</label><input name="direct.client_nom" type="text"></div>
+          <div class="row"><label>Téléphone</label><input name="direct.client_tel" type="tel"></div>
+        </div>
+
+        <div class="row"><label>Adresse</label><input name="direct.client_adresse" type="text"></div>
+
+        <div class="grid-2">
+          <div class="row"><label>Code postal</label><input name="direct.client_code_postal" type="text"></div>
+          <div class="row"><label>Ville</label><input name="direct.client_ville" type="text"></div>
+        </div>
+
+        <div class="row">
+          <label>Objet du dépannage / travaux à faire</label>
+          <textarea name="direct.objet" rows="5" placeholder="Décrire la panne ou l'intervention à réaliser..."></textarea>
+        </div>
+
+        <fieldset>
+          <legend>Encadrant</legend>
+          <div class="chips">
+            <label><input type="checkbox" class="cb-direct-enc-team" value="Laurent"><span>Laurent</span></label>
+            <label><input type="checkbox" class="cb-direct-enc-team" value="Cédric M"><span>Cédric M</span></label>
+            <label><input type="checkbox" class="cb-direct-enc-team" value="Cédric A"><span>Cédric A</span></label>
+            <label><input type="checkbox" class="cb-direct-enc-team" value="Vivien"><span>Vivien</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Équipe affectée</legend>
+          <div class="small muted" style="margin-bottom:4px">Charbo</div>
+          <div class="chips">
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Alexy"><span>Alexy</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Thomas"><span>Thomas</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Augustin"><span>Augustin</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Pierre-Clément"><span>Pierre-Clément</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Valentin"><span>Valentin</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Benoit"><span>Benoit</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Naiki"><span>Naiki</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Burak"><span>Burak</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Bertrand"><span>Bertrand</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Maxence"><span>Maxence</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Olivier"><span>Olivier</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Edgar"><span>Edgar</span></label>
+          </div>
+
+          <div class="small muted" style="margin:10px 0 4px">Tarare</div>
+          <div class="chips">
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Denis"><span>Denis</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Bachir"><span>Bachir</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Olivier"><span>Olivier</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Fabrice"><span>Fabrice</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Mazlum"><span>Mazlum</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Omer"><span>Omer</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Lucas"><span>Lucas</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Thierry"><span>Thierry</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Anthony"><span>Anthony</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Gérard"><span>Gérard</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Julien"><span>Julien</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Philippe"><span>Philippe</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Cheik"><span>Cheik</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Ahmed"><span>Ahmed</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Yoseane"><span>Yoseane</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Chris"><span>Chris</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Wakary"><span>Wakary</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="ThomasV"><span>ThomasV</span></label>
+            <label><input type="checkbox" class="cb-direct-aff-team" value="Christophe"><span>Christophe</span></label>
+          </div>
+        </fieldset>
+
+        <div class="actions">
+          <button class="btn primary" id="save-bon-direct-compta">Créer BT dépannage</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script src="api.js"></script>
@@ -165,6 +390,11 @@
       const bloc = document.getElementById('cd-bloc-chantier');
       function sync(){ if(cb && bloc) bloc.style.display = cb.checked ? '' : 'none'; }
       cb && (cb.onchange = sync, sync());
+
+      const cb2 = document.getElementById('cb-adrdiff');
+      const bloc2 = document.getElementById('cb-bloc-chantier');
+      function sync2(){ if(cb2 && bloc2) bloc2.style.display = cb2.checked ? '' : 'none'; }
+      cb2 && (cb2.onchange = sync2, sync2());
     })();
   </script>
 
