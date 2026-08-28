@@ -242,7 +242,14 @@ window.Push = (() => {
   }
 
   function isSupported() {
-    return 'serviceWorker' in navigator && 'PushManager' in window;
+    // Sur iOS/iPadOS, Notification/PushManager n'existent (et ne fonctionnent)
+    // que si l'appli est installee sur l'ecran d'accueil (mode standalone) ;
+    // dans Safari normal, meme si les objets existent, ca ne marche pas.
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isIOS && !isStandalone) return false;
+
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   }
 
   async function getExistingSubscription() {

@@ -421,9 +421,39 @@ select:focus{
     padding:18px;
     border-radius:14px;
   }
-  /* la scene passe en mode "meet" calee en bas (voir login.js) :
-     le halo suit l'enseigne, plus bas dans ce mode */
+  /* Safari/iOS gere tres mal les nombreux filtres (blur, drop-shadow) empiles
+     et animes en continu : ca peut suffire a rendre le telephone a la traine
+     au point que le clavier/le tactile deviennent poussifs. On simplifie
+     fortement sur mobile : moins de flou, moins d'animations simultanees.
+     Le halo suit aussi l'enseigne (mode "meet" cale en bas, voir login.js). */
   .fx-halo::before{
     top:78%;
+    animation:none;
+    opacity:.14;
+    filter:blur(70px);
+  }
+  .fx-scene .cloud{
+    animation:none;
+    filter:none;
+    opacity:.18;
+  }
+  .fx-scene .star{
+    animation:none;
+    opacity:.5;
+  }
+  .fx-scene .sheen-mask-rect{
+    animation:none;
+    display:none;
+  }
+  .fx-scene .sign-highlight{
+    animation:none;
+    display:none;
+  }
+  .fx-scene .sign-text .t-borda,
+  .fx-scene .sign-text .t-nova{
+    filter:drop-shadow(0 0 2px currentColor);
+  }
+  .fx-scene .sign-logo{
+    filter:drop-shadow(0 0 2px #2dd4ff);
   }
 }
