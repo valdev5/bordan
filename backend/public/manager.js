@@ -2477,6 +2477,12 @@ function renderBoard() {
   if (showUnassignedOnly) {
     visibleDevis = visibleDevis.filter(hasNoResponsable);
   }
+
+  // Les devis urgents remontent en premier dans leur colonne (tri stable :
+  // a urgence egale, l'ordre d'origine est conserve).
+  const urgenceRank = (devis) => (devis.urgence === 'tres urgent' ? 0 : devis.urgence === 'urgent' ? 1 : 2);
+  visibleDevis = [...visibleDevis].sort((a, b) => urgenceRank(a) - urgenceRank(b));
+
   visibleDevis.forEach((devis) => {
     const column = columns[devis.pipeline];
     if (!column) {
