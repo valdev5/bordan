@@ -522,6 +522,13 @@ document.getElementById('save-bon-direct-compta').addEventListener('click', () =
       'bon.client_code_postal': raw['direct.client_code_postal'] || '',
       'bon.client_ville': raw['direct.client_ville'] || '',
       'bon.objet': objet,
+      'bon.adresse_chantier_diff': raw['direct.adresse_chantier_diff'] || 'non',
+      'bon.adresse_chantier': raw['direct.adresse_chantier'] || '',
+      'bon.chantier_code_postal': raw['direct.chantier_code_postal'] || '',
+      'bon.chantier_ville': raw['direct.chantier_ville'] || '',
+      'bon.nom_locataire': raw['direct.nom_locataire'] || '',
+      'bon.tel_locataire': raw['direct.tel_locataire'] || '',
+      'bon.remarques_chantier': raw['direct.remarques_chantier'] || '',
       'bon.encadrants': encadrants.join('|'),
       'bon.encadrant': encadrants[0] || '',
     },
@@ -542,6 +549,7 @@ document.getElementById('save-bon-direct-compta').addEventListener('click', () =
   });
   cbSetCheckedValues('.cb-direct-enc-team', []);
   cbSetCheckedValues('.cb-direct-aff-team', []);
+  document.getElementById('cbd-bloc-chantier').style.display = 'none';
 });
 
 function renderCompta() {

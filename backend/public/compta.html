@@ -335,6 +335,24 @@
           <textarea name="direct.objet" rows="5" placeholder="Décrire la panne ou l'intervention à réaliser..."></textarea>
         </div>
 
+        <!-- Adresse chantier différente -->
+        <fieldset>
+          <legend>Adresse chantier</legend>
+          <label><input type="checkbox" name="direct.adresse_chantier_diff" id="cbd-adrdiff"> Adresse chantier différente</label>
+          <div id="cbd-bloc-chantier" style="display:none; margin-top:8px">
+            <div class="row"><label>Adresse chantier</label><input name="direct.adresse_chantier" type="text"></div>
+            <div class="grid-2">
+              <div class="row"><label>Code postal chantier</label><input name="direct.chantier_code_postal" type="text"></div>
+              <div class="row"><label>Ville chantier</label><input name="direct.chantier_ville" type="text"></div>
+            </div>
+            <div class="grid-2">
+              <div class="row"><label>Nom locataire</label><input name="direct.nom_locataire" type="text"></div>
+              <div class="row"><label>Téléphone locataire</label><input name="direct.tel_locataire" type="tel"></div>
+            </div>
+            <div class="row"><label>Remarques chantier</label><textarea name="direct.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
+          </div>
+        </fieldset>
+
         <fieldset>
           <legend>Encadrant</legend>
           <div class="chips">
@@ -414,6 +432,11 @@
       const bloc2 = document.getElementById('cb-bloc-chantier');
       function sync2(){ if(cb2 && bloc2) bloc2.style.display = cb2.checked ? '' : 'none'; }
       cb2 && (cb2.onchange = sync2, sync2());
+
+      const cb3 = document.getElementById('cbd-adrdiff');
+      const bloc3 = document.getElementById('cbd-bloc-chantier');
+      function sync3(){ if(cb3 && bloc3) bloc3.style.display = cb3.checked ? '' : 'none'; }
+      cb3 && (cb3.onchange = sync3, sync3());
     })();
   </script>
 
