@@ -74,43 +74,81 @@
 
     <section class="view" id="tab-compta-nouveau">
       <div class="sheet">
-        <h2 class="title">Nouveau devis (appel téléphonique)</h2>
+        <h2 class="title">Saisir / Modifier un devis</h2>
 
         <div class="grid-3">
-          <div class="row"><label>Numéro de devis</label><input id="pd-num" type="text" placeholder="DV-YYYYMMDD-XXX"></div>
-          <div class="row"><label>Date</label><input id="pd-date" type="date"></div>
-          <div class="row"><label>N° client</label><input id="pd-numclient" type="text"></div>
+          <div class="row"><label>Numéro de devis</label><input id="cdnum" name="devis.num_devis" type="text" placeholder="DV-YYYYMMDD-XXX"></div>
+          <div class="row"><label>Date</label><input id="cddate" name="devis.date_demande" type="date"></div>
+          <div class="row"><label>Indice</label><input name="devis.indice" type="text" placeholder="Indice interne (optionnel)"></div>
         </div>
 
         <div class="grid-2">
-          <div class="row"><label>Nom du client</label><input id="pd-nom" type="text"></div>
-          <div class="row"><label>Téléphone</label><input id="pd-tel" type="tel"></div>
+          <div class="row"><label>Nom du client</label><input name="devis.nom" type="text"></div>
+          <div class="row"><label>N° client</label><input name="devis.num_client" type="text"></div>
         </div>
 
-        <div class="row"><label>Email</label><input id="pd-email" type="email"></div>
-
-        <div class="row"><label>Adresse</label><input id="pd-adresse" type="text"></div>
+        <div class="row"><label>Adresse</label><input name="devis.adresse" type="text"></div>
 
         <div class="grid-2">
-          <div class="row"><label>Code postal</label><input id="pd-cp" type="text"></div>
-          <div class="row"><label>Ville</label><input id="pd-ville" type="text"></div>
+          <div class="row"><label>Code postal</label><input name="devis.code_postal" type="text"></div>
+          <div class="row"><label>Ville</label><input name="devis.ville" type="text"></div>
         </div>
 
-        <div class="row"><label>Objet de la demande</label><input id="pd-objet" type="text"></div>
-        <div class="row"><label>Notes avant RDV</label><textarea id="pd-notes" rows="3" placeholder="Infos à noter avant le rendez-vous…"></textarea></div>
-
-        <div class="row"><label>Encadrant(s) à assigner</label>
-          <div class="chips">
-            <label><input type="checkbox" class="pd-enc-team" value="Laurent"><span>Laurent</span></label>
-            <label><input type="checkbox" class="pd-enc-team" value="Cédric M"><span>Cédric M</span></label>
-            <label><input type="checkbox" class="pd-enc-team" value="Cédric A"><span>Cédric A</span></label>
-            <label><input type="checkbox" class="pd-enc-team" value="Vivien"><span>Vivien</span></label>
-            <label><input type="checkbox" class="pd-enc-team" value="Karine"><span>Karine</span></label>
+        <!-- Adresse chantier différente -->
+        <div class="row">
+          <label><input type="checkbox" name="devis.adresse_chantier_diff" id="cd-adrdiff"> Adresse chantier différente</label>
+        </div>
+        <div id="cd-bloc-chantier" style="display:none">
+          <div class="row"><label>Adresse chantier</label><input name="devis.adresse_chantier" type="text"></div>
+          <div class="grid-2">
+            <div class="row"><label>Code postal chantier</label><input name="devis.chantier_code_postal" type="text"></div>
+            <div class="row"><label>Ville chantier</label><input name="devis.chantier_ville" type="text"></div>
           </div>
+          <div class="grid-2">
+            <div class="row"><label>Nom locataire</label><input name="devis.nom_locataire" type="text"></div>
+            <div class="row"><label>Téléphone locataire</label><input name="devis.tel_locataire" type="tel"></div>
+          </div>
+          <div class="row"><label>Remarques chantier</label><textarea name="devis.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
         </div>
+
+        <div class="grid-2">
+          <div class="row"><label>Téléphone</label><input name="devis.tel" type="tel"></div>
+          <div class="row"><label>Email</label><input name="devis.email" type="email"></div>
+        </div>
+
+        <div class="row"><label>Objet de la demande</label><input name="devis.objet_demande" type="text"></div>
+        <div class="row"><label>Notes avant RDV</label><textarea name="devis.notes_avant_rdv" rows="3" placeholder="Infos à noter avant le rendez-vous…"></textarea></div>
+
+        <fieldset>
+          <legend>Affectation dès le premier contact</legend>
+          <div class="row"><label>Encadrant(s) assigné(s) au devis</label>
+            <div class="chips">
+              <label><input type="checkbox" class="devis-enc-team" value="Laurent"><span>Laurent</span></label>
+              <label><input type="checkbox" class="devis-enc-team" value="Cédric M"><span>Cédric M</span></label>
+              <label><input type="checkbox" class="devis-enc-team" value="Cédric A"><span>Cédric A</span></label>
+              <label><input type="checkbox" class="devis-enc-team" value="Vivien"><span>Vivien</span></label>
+              <label><input type="checkbox" class="devis-enc-team" value="Karine"><span>Karine</span></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Suivi</legend>
+          <div class="grid-3">
+            <label><input type="checkbox" name="devis.signe"> Devis signé</label>
+            <label><input type="checkbox" name="devis.acompte"> Acompte reçu</label>
+            <label><input type="checkbox" name="devis.refuse"> Refusé</label>
+          </div>
+          <div class="row"><label>Envoyer à la compta</label>
+            <select id="cd-admin">
+              <option value="">—</option><option>Sophie</option><option>Catherine</option><option>Karine</option>
+            </select>
+          </div>
+        </fieldset>
 
         <div class="actions" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
-          <button class="btn primary" id="save-phone-devis">Enregistrer le devis</button>
+          <button class="btn outline" id="load-devis-compta">Charger un devis…</button>
+          <button class="btn primary" id="save-devis-compta">Enregistrer le devis</button>
         </div>
       </div>
     </section>
@@ -119,6 +157,17 @@
   <script src="api.js"></script>
   <script src="auth.js"></script>
   <script src="app-common.js"></script>
+
+  <!-- Toggle (adresse chantier différente) -->
+  <script>
+    (function(){
+      const cb = document.getElementById('cd-adrdiff');
+      const bloc = document.getElementById('cd-bloc-chantier');
+      function sync(){ if(cb && bloc) bloc.style.display = cb.checked ? '' : 'none'; }
+      cb && (cb.onchange = sync, sync());
+    })();
+  </script>
+
   <script src="compta.js"></script>
 </body>
 </html>

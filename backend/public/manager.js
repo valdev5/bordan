@@ -1610,6 +1610,11 @@ function openDevis(item) {
     devisAdmin.value = item.raw?.['devis.admin'] || item.admin || '';
   }
 
+  const blocChantier = $('#bloc-chantier');
+  if (blocChantier) {
+    blocChantier.style.display = item.raw?.['devis.adresse_chantier_diff'] === 'oui' ? '' : 'none';
+  }
+
   currentDevisId = item.id;
   showTab('devis');
   initDevisDefaults();
@@ -1626,6 +1631,11 @@ function openBon(item) {
   const bonAdmin = $('#bon-admin');
   if (bonAdmin) {
     bonAdmin.value = item.raw?.['bon.admin'] || item.admin || '';
+  }
+
+  const bBlocChantier = $('#b-bloc-chantier');
+  if (bBlocChantier) {
+    bBlocChantier.style.display = item.raw?.['bon.adresse_chantier_diff'] === 'oui' ? '' : 'none';
   }
 
   currentBonId = item.id;

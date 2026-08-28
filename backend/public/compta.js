@@ -34,88 +34,164 @@ function updateComptaTabBadge(id, count) {
   el.style.display = count > 0 ? '' : 'none';
 }
 
-function makePhoneDevisNum(list = Store.load(Store.KEY_DEVIS) || []) {
+/* Devis (formulaire identique a celui du manager) */
+let currentComptaDevisId = null;
+
+function $c(sel, root = document) { return root.querySelector(sel); }
+function $$c(sel, root = document) { return [...root.querySelectorAll(sel)]; }
+
+function serializeNamedFields(prefix) {
+  const entries = [];
+  $$c(`[name^="${prefix}."]`).forEach((field) => {
+    if (field.type === 'radio') {
+      if (field.checked) entries.push([field.name, field.value]);
+      return;
+    }
+    entries.push([field.name, field.type === 'checkbox' ? (field.checked ? 'oui' : 'non') : field.value]);
+  });
+  return Object.fromEntries(entries);
+}
+
+function setFieldValueCompta(name, value) {
+  const fields = $$c(`[name="${name}"]`);
+  if (!fields.length) return;
+
+  if (fields[0].type === 'radio') {
+    fields.forEach((field) => { field.checked = field.value === String(value ?? ''); });
+    return;
+  }
+
+  const field = fields[0];
+  if (field.type === 'checkbox') {
+    field.checked = value === 'oui' || value === true || value === '1';
+    return;
+  }
+
+  if (field.tagName === 'SELECT' && value && !Array.from(field.options).some((o) => o.value === value)) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    field.appendChild(option);
+  }
+
+  field.value = value ?? '';
+}
+
+function applyRawValuesCompta(raw = {}) {
+  Object.entries(raw).forEach(([name, value]) => setFieldValueCompta(name, value));
+}
+
+function normalizeListCompta(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : []).map((v) => cleanText(v)).filter(Boolean)));
+}
+
+function getSelectedDevisEncadrantsCompta() {
+  return normalizeListCompta($$c('.devis-enc-team').filter((f) => f.checked).map((f) => f.value));
+}
+
+function setSelectedDevisEncadrantsCompta(values) {
+  const selected = new Set(normalizeListCompta(values));
+  $$c('.devis-enc-team').forEach((f) => { f.checked = selected.has(f.value); });
+}
+
+function makeDevisNumCompta(list = Store.load(Store.KEY_DEVIS) || []) {
   const base = new Date().toISOString().slice(0, 10).replaceAll('-', '');
   const count = list.filter((devis) => String(devis.num || '').startsWith(`DV-${base}`)).length;
   return `DV-${base}-${String(count + 1).padStart(3, '0')}`;
 }
 
-function initPhoneDevisForm() {
-  const numField = document.getElementById('pd-num');
-  const dateField = document.getElementById('pd-date');
-  if (numField) numField.value = makePhoneDevisNum();
-  if (dateField) dateField.value = new Date().toISOString().slice(0, 10);
+function initComptaDevisDefaults() {
+  const numField = document.getElementById('cdnum');
+  const dateField = document.getElementById('cddate');
+  if (numField && !numField.value) numField.value = makeDevisNumCompta();
+  if (dateField && !dateField.value) dateField.value = new Date().toISOString().slice(0, 10);
 }
 
-initPhoneDevisForm();
+initComptaDevisDefaults();
 
-document.getElementById('save-phone-devis').addEventListener('click', async () => {
-  const nom = cleanText(document.getElementById('pd-nom').value);
-  if (!nom) {
+function resetComptaDevisForm() {
+  currentComptaDevisId = null;
+  $$c('#tab-compta-nouveau [name^="devis."]').forEach((field) => {
+    if (field.type === 'checkbox' || field.type === 'radio') field.checked = false;
+    else field.value = '';
+  });
+  document.getElementById('cd-admin').value = '';
+  setSelectedDevisEncadrantsCompta([]);
+  document.getElementById('cd-bloc-chantier').style.display = 'none';
+  initComptaDevisDefaults();
+}
+
+document.getElementById('save-devis-compta').addEventListener('click', async () => {
+  const raw = serializeNamedFields('devis');
+  const list = Store.load(Store.KEY_DEVIS);
+  const current = list.find((devis) => devis.num === raw['devis.num_devis']);
+  const encadrants = getSelectedDevisEncadrantsCompta();
+  const admin = cleanText(document.getElementById('cd-admin').value || current?.admin);
+
+  const item = {
+    id: currentComptaDevisId || undefined,
+    type: 'devis',
+    num: cleanText(raw['devis.num_devis']),
+    client: cleanText(raw['devis.nom']),
+    objet: cleanText(raw['devis.objet_demande'] || raw['devis.objet']),
+    signe: raw['devis.signe'] || 'non',
+    acompte: raw['devis.acompte'] || 'non',
+    refuse: raw['devis.refuse'] || 'non',
+    admin,
+    encadrants,
+    encadrant: encadrants[0] || cleanText(raw['devis.encadrant']),
+    pipeline: current?.pipeline || 'd-attente-appel',
+    raw: {
+      ...raw,
+      'devis.encadrants': encadrants.join('|'),
+      'devis.encadrant': encadrants[0] || '',
+      'devis.admin': admin,
+    },
+  };
+
+  if (!item.num) {
+    alert('Le numéro de devis est requis.');
+    return;
+  }
+  if (!item.client) {
     alert('Le nom du client est requis.');
     return;
   }
 
-  const num = cleanText(document.getElementById('pd-num').value) || makePhoneDevisNum();
-  const list = Store.load(Store.KEY_DEVIS);
-
-  if (list.some((devis) => devis.num === num)) {
+  const exists = list.some((devis) => devis.num === item.num && devis.id !== currentComptaDevisId);
+  if (exists) {
     alert('Un devis avec ce numéro existe déjà.');
     return;
   }
 
-  const encadrants = Array.from(document.querySelectorAll('.pd-enc-team:checked')).map((el) => el.value);
-  const objet = cleanText(document.getElementById('pd-objet').value);
-  const dateField = cleanText(document.getElementById('pd-date').value);
-
-  const item = {
-    type: 'devis',
-    num,
-    client: nom,
-    objet,
-    signe: 'non',
-    acompte: 'non',
-    refuse: 'non',
-    admin: '',
-    encadrants,
-    encadrant: encadrants[0] || '',
-    pipeline: 'd-attente-appel',
-    raw: {
-      'devis.num_devis': num,
-      'devis.date_demande': dateField,
-      'devis.nom': nom,
-      'devis.num_client': cleanText(document.getElementById('pd-numclient').value),
-      'devis.adresse': cleanText(document.getElementById('pd-adresse').value),
-      'devis.code_postal': cleanText(document.getElementById('pd-cp').value),
-      'devis.ville': cleanText(document.getElementById('pd-ville').value),
-      'devis.tel': cleanText(document.getElementById('pd-tel').value),
-      'devis.email': cleanText(document.getElementById('pd-email').value),
-      'devis.objet_demande': objet,
-      'devis.notes_avant_rdv': cleanText(document.getElementById('pd-notes').value),
-      'devis.signe': 'non',
-      'devis.acompte': 'non',
-      'devis.refuse': 'non',
-      'devis.encadrants': encadrants.join('|'),
-      'devis.encadrant': encadrants[0] || '',
-      'devis.admin': '',
-      'devis.cree_par': CURRENT_USER,
-    },
-  };
-
-  Store.save(Store.KEY_DEVIS, Store.upsertByField(list, item, 'num'));
+  Store.save(Store.KEY_DEVIS, Store.upsertByField(list, item, 'num', currentComptaDevisId));
 
   try {
     await Store.flush?.();
   } catch (error) {
-    console.warn('Impossible de pousser le devis vers le stockage partage', error);
+    console.warn('Impossible de pousser le devis vers le stockage partagé', error);
   }
 
-  alert('Devis enregistré. Les encadrants assignés le retrouveront dans leur espace.');
+  alert('Devis enregistré.');
+  resetComptaDevisForm();
+});
 
-  ['pd-numclient', 'pd-nom', 'pd-tel', 'pd-email', 'pd-adresse', 'pd-cp', 'pd-ville', 'pd-objet', 'pd-notes']
-    .forEach((id) => { document.getElementById(id).value = ''; });
-  document.querySelectorAll('.pd-enc-team').forEach((el) => { el.checked = false; });
-  initPhoneDevisForm();
+document.getElementById('load-devis-compta').addEventListener('click', () => {
+  const num = prompt('N° de devis à charger ?');
+  if (!num) return;
+
+  const found = Store.load(Store.KEY_DEVIS).find((devis) => devis.num === num);
+  if (!found) {
+    alert('Devis introuvable.');
+    return;
+  }
+
+  applyRawValuesCompta(found.raw || {});
+  setSelectedDevisEncadrantsCompta(found.encadrants?.length ? found.encadrants : (found.encadrant ? [found.encadrant] : []));
+  document.getElementById('cd-admin').value = found.raw?.['devis.admin'] || found.admin || '';
+  document.getElementById('cd-bloc-chantier').style.display = found.raw?.['devis.adresse_chantier_diff'] === 'oui' ? '' : 'none';
+  currentComptaDevisId = found.id;
+  showComptaTab('nouveau');
 });
 
 function renderCompta() {
