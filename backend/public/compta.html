@@ -302,6 +302,15 @@
 
         <p class="small muted">Les heures, photos et messages chantier se remplissent depuis l'espace manager une fois l'intervention en cours.</p>
 
+        <!-- Signature client (si Karine/Catherine terminent elles-mêmes le chantier) -->
+        <fieldset>
+          <legend>Signature client</legend>
+          <div id="cb-signature-box" class="small muted">Chargez un bon existant pour pouvoir le terminer.</div>
+          <div style="margin-top:8px">
+            <button type="button" class="btn success" id="cb-sig-open" style="width:100%" disabled>Terminer le chantier</button>
+          </div>
+        </fieldset>
+
         <div class="actions" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px">
           <button class="btn outline" id="load-bon-compta">Charger un bon…</button>
           <button class="btn primary" id="save-bon-compta">Enregistrer le bon</button>

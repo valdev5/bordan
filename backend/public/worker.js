@@ -467,6 +467,12 @@ function renderWork() {
         </select>
       </div>
 
+      <div class="sig-block" style="margin-top:10px">
+        ${bon.signature
+          ? window.renderSignatureStatusHtml(bon.signature)
+          : '<button type="button" class="btn success sig-open" style="width:100%">Terminer le chantier</button>'}
+      </div>
+
       <div class="small" style="margin-top:8px">Mes dernieres lignes:</div>
       <div class="small" data-wlog>-</div>
       <div class="small muted" style="margin-top:4px">Total cumule: <strong data-wtotal>${(Math.round(myTotal * 100) / 100).toFixed(2)} h</strong></div>
@@ -722,6 +728,40 @@ function renderWork() {
 
       renderWork();
     });
+
+    const sigOpenButton = card.querySelector('.sig-open');
+    if (sigOpenButton) {
+      sigOpenButton.addEventListener('click', async () => {
+        const result = await window.openSignatureFlow();
+        if (!result) {
+          return;
+        }
+
+        const allBons = Store.load(Store.KEY_BONS);
+        const index = allBons.findIndex((entry) => entry.id === bon.id);
+        if (index < 0) {
+          alert('Bon introuvable.');
+          return;
+        }
+
+        const copy = { ...allBons[index] };
+        copy.signature = {
+          present: result.present,
+          dataUrl: result.present ? result.dataUrl : null,
+          from: CURRENT_USER,
+          ts: Date.now(),
+          date: new Date().toLocaleString(),
+        };
+        copy.progress = copy.progress || {};
+        copy.progress[CURRENT_USER] = 'Termine';
+        copy.status = 'facturer';
+
+        allBons[index] = copy;
+        Store.save(Store.KEY_BONS, allBons);
+
+        renderWork();
+      });
+    }
 
     wrap.appendChild(card);
   });

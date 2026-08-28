@@ -798,6 +798,157 @@ textarea {
   box-shadow: var(--shadow);
 }
 
+/* ===== Signature client fin de chantier ===== */
+.sig-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 10, .72);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.sig-sheet {
+  width: 100%;
+  max-width: 460px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  padding: 18px 18px 22px;
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, .4);
+}
+
+.sig-sheet h4 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.sig-sub {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.sig-choice-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.sig-choice-row .btn {
+  flex: 1;
+  padding: 14px 10px;
+}
+
+.sig-pad-wrap {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.sig-pad {
+  display: block;
+  width: 100%;
+  height: 150px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.sig-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9aa5ad;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.sig-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sig-actions .btn {
+  flex: 1;
+}
+
+.sig-absent-box {
+  background: var(--panel);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.sig-absent-box strong {
+  color: var(--text);
+}
+
+.sig-back {
+  display: block;
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+}
+
+.sig-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.sig-status.signed {
+  background: rgba(34, 197, 94, .1);
+  border: 1px solid rgba(34, 197, 94, .35);
+}
+
+.sig-status.unsigned {
+  background: rgba(245, 158, 11, .1);
+  border: 1px solid rgba(245, 158, 11, .35);
+}
+
+.sig-status img {
+  height: 44px;
+  background: #fff;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.sig-status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f59e0b;
+  flex-shrink: 0;
+}
+
+.sig-status.signed .txt {
+  color: #bff5cf;
+}
+
+.sig-status.unsigned .txt {
+  color: #fde3b0;
+}
+
+.sig-status .txt strong {
+  display: block;
+  color: var(--text);
+  font-size: 13.5px;
+}
+
 /* ===== Historique client (devis / bon) ===== */
 .history-box {
   display: none;

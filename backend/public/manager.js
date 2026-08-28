@@ -778,6 +778,16 @@ function buildBonPrintHtml(item) {
         hoursRows,
       )}
     </div>
+
+    <div class="print-block">
+      <h2>Signature client</h2>
+      ${
+        item.signature?.present && item.signature?.dataUrl
+          ? `<img src="${item.signature.dataUrl}" alt="Signature client" style="max-width:260px; background:#fff; border-radius:6px; padding:4px">
+             <div class="muted" style="margin-top:4px">Signe le ${escapeHtml(item.signature.date || '')}</div>`
+          : `<div class="muted">Signature client : non recueillie${item.signature?.date ? ` (chantier termine le ${escapeHtml(item.signature.date)})` : ''}</div>`
+      }
+    </div>
   `;
 }
 
@@ -1670,6 +1680,7 @@ function openBon(item) {
   showTab('bon');
   initManagerChat(item);
   initManagerGallery(item);
+  renderManagerSignature(item);
   markChatSeen(item, cleanText(CURRENT_USER));
   renderClientHistory(item.client || item.raw?.['bon.client_nom'] || '', 'bon', 'bon', item.id);
   renderBoard();
@@ -1977,6 +1988,20 @@ function initManagerGallery(bon) {
       renderGallery();
     }
   };
+}
+
+// Signature client (lecture seule cote manager, saisie uniquement par
+// l'intervenant a la fin du chantier).
+function renderManagerSignature(bon) {
+  const box = $('#mgr-signature-box');
+  if (!box) {
+    return;
+  }
+
+  const fresh = Store.load(Store.KEY_BONS).find((entry) => entry.id === bon.id) || bon;
+  box.innerHTML = fresh.signature
+    ? window.renderSignatureStatusHtml(fresh.signature)
+    : "Chantier pas encore termine par l'intervenant.";
 }
 
 // Un devis pas encore enregistre n'a pas d'id : les photos doivent rester

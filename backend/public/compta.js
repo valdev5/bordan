@@ -394,6 +394,24 @@ function cbFindAssignmentConflicts(item, allBons) {
   return conflicts;
 }
 
+function renderComptaSignature() {
+  const box = document.getElementById('cb-signature-box');
+  const button = document.getElementById('cb-sig-open');
+  if (!box || !button) return;
+
+  if (!currentComptaBonId) {
+    box.innerHTML = 'Chargez un bon existant pour pouvoir le terminer.';
+    button.disabled = true;
+    return;
+  }
+
+  const fresh = Store.load(Store.KEY_BONS).find((entry) => entry.id === currentComptaBonId);
+  box.innerHTML = fresh?.signature
+    ? window.renderSignatureStatusHtml(fresh.signature)
+    : "Chantier pas encore termine.";
+  button.disabled = false;
+}
+
 function resetComptaBonForm() {
   currentComptaBonId = null;
   $$c('#tab-compta-bon [name^="bon."]').forEach((field) => {
@@ -405,6 +423,7 @@ function resetComptaBonForm() {
   cbSetCheckedValues('.cb-enc-team', []);
   cbResetRdvRows();
   document.getElementById('cb-bloc-chantier').style.display = 'none';
+  renderComptaSignature();
 }
 
 document.getElementById('save-bon-compta').addEventListener('click', () => {
@@ -487,7 +506,38 @@ document.getElementById('load-bon-compta').addEventListener('click', () => {
   document.getElementById('cb-bloc-chantier').style.display = found.raw?.['bon.adresse_chantier_diff'] === 'oui' ? '' : 'none';
   cbLoadRdvRows(found.rdv_plus || []);
   currentComptaBonId = found.id;
+  renderComptaSignature();
   showComptaTab('bon');
+});
+
+document.getElementById('cb-sig-open').addEventListener('click', async () => {
+  if (!currentComptaBonId) return;
+
+  const result = await window.openSignatureFlow();
+  if (!result) return;
+
+  const allBons = Store.load(Store.KEY_BONS);
+  const index = allBons.findIndex((entry) => entry.id === currentComptaBonId);
+  if (index < 0) {
+    alert('Bon introuvable.');
+    return;
+  }
+
+  const copy = { ...allBons[index] };
+  copy.signature = {
+    present: result.present,
+    dataUrl: result.present ? result.dataUrl : null,
+    from: CURRENT_USER,
+    ts: Date.now(),
+    date: new Date().toLocaleString(),
+  };
+  copy.progress = copy.progress || {};
+  copy.progress[CURRENT_USER] = 'Termine';
+  copy.status = 'facturer';
+
+  allBons[index] = copy;
+  Store.save(Store.KEY_BONS, allBons);
+  renderComptaSignature();
 });
 
 /* BT depannage direct */
@@ -842,6 +892,16 @@ function openPrintView(bon) {
       </div>
 
       <div class="block">
+        <h2>Signature client</h2>
+        ${
+          bon.signature?.present && bon.signature?.dataUrl
+            ? `<img src="${bon.signature.dataUrl}" alt="Signature client" style="max-width:260px;background:#fff;border:1px solid #ccc;border-radius:6px;padding:4px">
+               <div class="muted" style="margin-top:4px">Signe le ${bon.signature.date || ''}</div>`
+            : `<div class="muted">Signature client : non recueillie${bon.signature?.date ? ` (chantier termine le ${bon.signature.date})` : ''}</div>`
+        }
+      </div>
+
+      <div class="block">
         <h2>Devis original</h2>
         <table>
           <thead><tr><th>Champ</th><th>Valeur</th></tr></thead>
@@ -957,6 +1017,7 @@ function openDevisPrintView(devis) {
 function renderAll() {
   renderCompta();
   renderDevisCompta();
+  renderComptaSignature();
 }
 
 window.addEventListener('shared-store-changed', renderAll);
