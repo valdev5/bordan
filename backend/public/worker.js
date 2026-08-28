@@ -917,11 +917,31 @@ function renderMessagerieThreads() {
   });
 }
 
+function deleteMessagerieConversation(bonId) {
+  if (!confirm('Supprimer tous les messages de cette conversation ? Cette action est irreversible.')) {
+    return;
+  }
+
+  const allBons = Store.load(Store.KEY_BONS);
+  const index = allBons.findIndex((entry) => String(entry.id) === String(bonId));
+  if (index < 0) {
+    return;
+  }
+
+  const updated = { ...allBons[index], chat: [], chatSeen: {} };
+  allBons[index] = updated;
+  Store.save(Store.KEY_BONS, allBons);
+
+  renderMessagerieThreads();
+  renderMessagerieConversation(updated);
+}
+
 function renderMessagerieConversation(bon) {
   const title = document.getElementById('msg-conv-title');
   const sub = document.getElementById('msg-conv-sub');
   const body = document.getElementById('msg-conv-body');
   const openLink = document.getElementById('msg-conv-open');
+  const deleteButton = document.getElementById('msg-conv-delete');
   if (!title || !sub || !body) {
     return;
   }
@@ -932,6 +952,11 @@ function renderMessagerieConversation(bon) {
 
   title.textContent = freshBon.client || 'Client ?';
   sub.textContent = `${freshBon.num_devis || '-'}`;
+
+  if (deleteButton) {
+    deleteButton.style.display = chat.length ? '' : 'none';
+    deleteButton.onclick = () => deleteMessagerieConversation(freshBon.id);
+  }
 
   body.innerHTML = chat.length
     ? chat

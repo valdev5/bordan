@@ -1272,11 +1272,31 @@ function renderMessagerieThreads() {
   });
 }
 
+function deleteMessagerieConversation(bonId) {
+  if (!confirm('Supprimer tous les messages de cette conversation ? Cette action est irreversible.')) {
+    return;
+  }
+
+  const allBons = Store.load(Store.KEY_BONS);
+  const index = allBons.findIndex((entry) => String(entry.id) === String(bonId));
+  if (index < 0) {
+    return;
+  }
+
+  const updated = { ...allBons[index], chat: [], chatSeen: {} };
+  allBons[index] = updated;
+  Store.save(Store.KEY_BONS, allBons);
+
+  renderMessagerieThreads();
+  renderMessagerieConversation(updated);
+}
+
 function renderMessagerieConversation(bon) {
   const title = $('#msg-conv-title');
   const sub = $('#msg-conv-sub');
   const body = $('#msg-conv-body');
   const openLink = $('#msg-conv-open');
+  const deleteButton = $('#msg-conv-delete');
   if (!title || !sub || !body) {
     return;
   }
@@ -1287,6 +1307,11 @@ function renderMessagerieConversation(bon) {
 
   title.textContent = freshBon.client || 'Client ?';
   sub.textContent = `${freshBon.num_devis || '-'}${freshBon.encadrant ? ` · Encadrant ${freshBon.encadrant}` : ''}`;
+
+  if (deleteButton) {
+    deleteButton.style.display = chat.length ? '' : 'none';
+    deleteButton.onclick = () => deleteMessagerieConversation(freshBon.id);
+  }
 
   body.innerHTML = chat.length
     ? chat
