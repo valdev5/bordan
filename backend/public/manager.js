@@ -2334,7 +2334,7 @@ $('#load-devis')?.addEventListener('click', () => {
 });
 
 /* Bon */
-$('#save-bon')?.addEventListener('click', () => {
+$('#save-bon')?.addEventListener('click', async () => {
   const raw = serializeNamedFields('bon');
   const list = Store.load(Store.KEY_BONS);
 
@@ -2392,7 +2392,36 @@ $('#save-bon')?.addEventListener('click', () => {
 
   Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis', currentBonId));
 
-  alert('Bon enregistre.');
+  const saved = Store.load(Store.KEY_BONS).find((entry) => entry.num_devis === item.num_devis);
+
+  // Si l'encadrant fait l'intervention lui-meme et vient de la terminer, il
+  // peut faire signer le client tout de suite, sans passer par un bouton
+  // "Terminer le chantier" separe.
+  if (saved && confirm("Bon enregistre. Terminez-vous l'intervention maintenant (signature client) ?")) {
+    const result = await window.openSignatureFlow();
+    if (result) {
+      const allBons = Store.load(Store.KEY_BONS);
+      const index = allBons.findIndex((entry) => entry.id === saved.id);
+      if (index >= 0) {
+        const copy = { ...allBons[index] };
+        copy.signature = {
+          present: result.present,
+          dataUrl: result.present ? result.dataUrl : null,
+          from: CURRENT_USER,
+          ts: Date.now(),
+          date: new Date().toLocaleString(),
+        };
+        copy.progress = copy.progress || {};
+        copy.progress[CURRENT_USER] = 'Termine';
+        copy.status = 'facturer';
+        allBons[index] = copy;
+        Store.save(Store.KEY_BONS, allBons);
+      }
+    }
+  } else {
+    alert('Bon enregistre.');
+  }
+
   prepareNewBonForm();
   showTab('board');
 });
