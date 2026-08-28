@@ -257,6 +257,18 @@ a:hover {
   background: transparent;
 }
 
+.addr-actions {
+  display: flex;
+  gap: 6px;
+  margin: -6px 0 10px;
+}
+
+.addr-actions .btn {
+  padding: 4px 10px;
+  font-size: 12.5px;
+  border-radius: 999px;
+}
+
 /* ===== Formulaires ===== */
 .sheet,
 .card,

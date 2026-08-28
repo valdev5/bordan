@@ -198,6 +198,10 @@
           <div class="row"><label>Code postal</label><input name="bon.client_code_postal" type="text"></div>
           <div class="row"><label>Ville</label><input name="bon.client_ville" type="text"></div>
         </div>
+        <div class="addr-actions">
+          <button type="button" class="btn outline addr-open" data-addr="bon.client_adresse" data-cp="bon.client_code_postal" data-ville="bon.client_ville">📍 Maps</button>
+          <button type="button" class="btn outline addr-open-waze" data-addr="bon.client_adresse" data-cp="bon.client_code_postal" data-ville="bon.client_ville">🚗 Waze</button>
+        </div>
 
         <!-- Adresse chantier différente -->
         <fieldset>
@@ -208,6 +212,10 @@
             <div class="grid-2">
               <div class="row"><label>Code postal chantier</label><input name="bon.chantier_code_postal" type="text"></div>
               <div class="row"><label>Ville chantier</label><input name="bon.chantier_ville" type="text"></div>
+            </div>
+            <div class="addr-actions">
+              <button type="button" class="btn outline addr-open" data-addr="bon.adresse_chantier" data-cp="bon.chantier_code_postal" data-ville="bon.chantier_ville">📍 Maps</button>
+              <button type="button" class="btn outline addr-open-waze" data-addr="bon.adresse_chantier" data-cp="bon.chantier_code_postal" data-ville="bon.chantier_ville">🚗 Waze</button>
             </div>
             <div class="grid-2">
               <div class="row"><label>Nom locataire</label><input name="bon.nom_locataire" type="text"></div>
@@ -354,6 +362,10 @@
           <div class="row"><label>Code postal</label><input name="direct.client_code_postal" type="text"></div>
           <div class="row"><label>Ville</label><input name="direct.client_ville" type="text"></div>
         </div>
+        <div class="addr-actions">
+          <button type="button" class="btn outline addr-open" data-addr="direct.client_adresse" data-cp="direct.client_code_postal" data-ville="direct.client_ville">📍 Maps</button>
+          <button type="button" class="btn outline addr-open-waze" data-addr="direct.client_adresse" data-cp="direct.client_code_postal" data-ville="direct.client_ville">🚗 Waze</button>
+        </div>
 
         <div class="row">
           <label>Objet du dépannage / travaux à faire</label>
@@ -369,6 +381,10 @@
             <div class="grid-2">
               <div class="row"><label>Code postal chantier</label><input name="direct.chantier_code_postal" type="text"></div>
               <div class="row"><label>Ville chantier</label><input name="direct.chantier_ville" type="text"></div>
+            </div>
+            <div class="addr-actions">
+              <button type="button" class="btn outline addr-open" data-addr="direct.adresse_chantier" data-cp="direct.chantier_code_postal" data-ville="direct.chantier_ville">📍 Maps</button>
+              <button type="button" class="btn outline addr-open-waze" data-addr="direct.adresse_chantier" data-cp="direct.chantier_code_postal" data-ville="direct.chantier_ville">🚗 Waze</button>
             </div>
             <div class="grid-2">
               <div class="row"><label>Nom locataire</label><input name="direct.nom_locataire" type="text"></div>

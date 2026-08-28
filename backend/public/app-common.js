@@ -223,6 +223,40 @@ window.compressImageFile = window.compressImageFile || function compressImageFil
   });
 };
 
+// Boutons "Maps" / "Waze" places sous un champ adresse de formulaire : lisent
+// la valeur actuelle des champs (adresse + code postal + ville) au moment du
+// clic, pour les encadrants qui font parfois eux-memes une intervention.
+document.addEventListener('click', (event) => {
+  const mapsBtn = event.target.closest('.addr-open');
+  const wazeBtn = event.target.closest('.addr-open-waze');
+  const btn = mapsBtn || wazeBtn;
+  if (!btn) {
+    return;
+  }
+  event.preventDefault();
+
+  const readField = (name) => {
+    if (!name) return '';
+    const field = document.querySelector(`[name="${name}"]`);
+    return field ? String(field.value || '').trim() : '';
+  };
+
+  const address = readField(btn.dataset.addr);
+  const cityLine = [readField(btn.dataset.cp), readField(btn.dataset.ville)].filter(Boolean).join(' ');
+  const full = [address, cityLine].filter(Boolean).join(', ');
+
+  if (!full) {
+    alert("Renseignez d'abord une adresse.");
+    return;
+  }
+
+  const query = encodeURIComponent(full);
+  const url = mapsBtn
+    ? `https://www.google.com/maps/search/?api=1&query=${query}`
+    : `https://waze.com/ul?q=${query}&navigate=yes`;
+  window.open(url, '_blank', 'noopener');
+});
+
 // Affiche une photo en plein ecran, clic (ou touche) pour fermer
 window.openLightbox = window.openLightbox || function openLightbox(url) {
   const overlay = document.createElement('div');
