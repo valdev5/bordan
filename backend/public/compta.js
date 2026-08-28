@@ -249,6 +249,7 @@ document.getElementById('save-devis-compta').addEventListener('click', async () 
     signe: raw['devis.signe'] || 'non',
     acompte: raw['devis.acompte'] || 'non',
     refuse: raw['devis.refuse'] || 'non',
+    urgence: raw['devis.urgence'] || 'normal',
     admin,
     encadrants,
     encadrant: encadrants[0] || cleanText(raw['devis.encadrant']),

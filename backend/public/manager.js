@@ -2158,6 +2158,7 @@ $('#save-devis')?.addEventListener('click', async () => {
     signe: raw['devis.signe'] || 'non',
     acompte: raw['devis.acompte'] || 'non',
     refuse: raw['devis.refuse'] || 'non',
+    urgence: raw['devis.urgence'] || 'normal',
     admin,
     encadrants,
     encadrant: encadrants[0] || cleanText(raw['devis.encadrant']),
@@ -2421,13 +2422,21 @@ function renderBoard() {
     }
     boardMatchCount += 1;
 
+    const urgenceClass = devis.urgence === 'tres urgent' ? ' urgence-tres-urgent' : devis.urgence === 'urgent' ? ' urgence-urgent' : '';
+    const urgenceBadge = devis.urgence === 'tres urgent'
+      ? '<span class="badge urgence-badge-tres">🔴 Très urgent</span>'
+      : devis.urgence === 'urgent'
+        ? '<span class="badge urgence-badge-urgent">🟠 Urgent</span>'
+        : '';
+
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = `card${urgenceClass}`;
     card.innerHTML = `
       <div class="line1">
         <strong>${highlightMatch(devis.client || 'Client ?', boardSearchTerm)}</strong>
         <span class="small">Devis no ${highlightMatch(devis.num || '-', boardSearchTerm)}</span>
       </div>
+      ${urgenceBadge}
       ${displayPeopleChips(devis)}
       <div class="small" style="margin:4px 0">${escapeHtml(devis.objet || '')}</div>
       <div class="row" style="margin-top:8px">

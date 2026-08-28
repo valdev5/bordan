@@ -1118,6 +1118,58 @@ textarea {
   font-weight: 700;
 }
 
+/* Fiche devis urgente : toute la carte clignote pour sauter aux yeux */
+.card.urgence-urgent {
+  border-color: #f59e0b;
+  animation: card-pulse-urgent 1.3s ease-in-out infinite;
+}
+
+.card.urgence-tres-urgent {
+  border-color: #ef4444;
+  animation: card-pulse-tres-urgent .9s ease-in-out infinite;
+}
+
+@keyframes card-pulse-urgent {
+  0%, 100% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+  50% { box-shadow: 0 0 10px rgba(245, 158, 11, .55), 0 0 22px rgba(245, 158, 11, .25); }
+}
+
+@keyframes card-pulse-tres-urgent {
+  0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 14px rgba(239, 68, 68, .7), 0 0 30px rgba(239, 68, 68, .35); }
+}
+
+.urgence-badge-urgent {
+  background: rgba(245, 158, 11, .14);
+  border-color: #f59e0b;
+  color: #fde3b0;
+  font-weight: 700;
+}
+
+.urgence-badge-tres {
+  background: rgba(239, 68, 68, .16);
+  border-color: #ef4444;
+  color: #ffc9c9;
+  font-weight: 700;
+  animation: neon-pulse-red 1s ease-in-out infinite;
+}
+
+@keyframes neon-pulse-red {
+  0%, 100% { box-shadow: 0 0 3px #ef4444, 0 0 6px rgba(239, 68, 68, .5); }
+  50% { box-shadow: 0 0 9px #ef4444, 0 0 18px rgba(239, 68, 68, .6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.urgence-urgent,
+  .card.urgence-tres-urgent {
+    animation: none;
+    border-width: 2px;
+  }
+  .urgence-badge-tres {
+    animation: none;
+  }
+}
+
 /* ===== Actions ===== */
 .actions {
   display: flex;
