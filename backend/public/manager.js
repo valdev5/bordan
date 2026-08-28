@@ -122,6 +122,35 @@ if (!window.Store) {
 const SHOW_ALL_KEY = 'SHOW_ALL_FOR_MANAGER';
 let showAll = localStorage.getItem(SHOW_ALL_KEY) === '1';
 let showUnassignedOnly = false;
+let showCharbo = false;
+let showTarare = false;
+
+// Qui est dans quelle equipe/site, pour les filtres "Voir Charbo" / "Voir
+// Tarare" du tableau (bons uniquement : les devis n'ont pas encore
+// d'equipe affectee a ce stade).
+const TEAM_SITE_MAP = (() => {
+  const charbo = ['Alexy', 'Thomas', 'Augustin', 'Pierre-Clément', 'Valentin', 'Benoit', 'Naiki', 'Burak', 'Bertrand', 'Maxence', 'Olivier', 'Edgar', 'Vivien', 'Laurent'];
+  const tarare = ['Denis', 'Bachir', 'Olivier', 'Fabrice', 'Mazlum', 'Omer', 'Lucas', 'Thierry', 'Anthony', 'Gérard', 'Julien', 'Philippe', 'Cheik', 'Ahmed', 'Yoseane', 'Chris', 'Wakary', 'ThomasV', 'Christophe', 'Cédric A', 'Cédric M'];
+  const map = {};
+  charbo.forEach((name) => {
+    map[name] = [...(map[name] || []), 'Charbo'];
+  });
+  tarare.forEach((name) => {
+    map[name] = [...(map[name] || []), 'Tarare'];
+  });
+  return map;
+})();
+
+function bonMatchesSiteFilter(bon) {
+  if (!showCharbo && !showTarare) {
+    return true;
+  }
+  const team = Array.isArray(bon.team) ? bon.team : [];
+  return team.some((name) => {
+    const sites = TEAM_SITE_MAP[cleanText(name)] || [];
+    return (showCharbo && sites.includes('Charbo')) || (showTarare && sites.includes('Tarare'));
+  });
+}
 
 function hasNoResponsable(item) {
   const encadrants = Array.isArray(item.encadrants) ? item.encadrants.filter(Boolean) : [];
@@ -1545,6 +1574,22 @@ if (showUnassignedToggle) {
   };
 }
 
+const showCharboToggle = $('#show-charbo');
+if (showCharboToggle) {
+  showCharboToggle.onchange = () => {
+    showCharbo = !!showCharboToggle.checked;
+    renderBoard();
+  };
+}
+
+const showTarareToggle = $('#show-tarare');
+if (showTarareToggle) {
+  showTarareToggle.onchange = () => {
+    showTarare = !!showTarareToggle.checked;
+    renderBoard();
+  };
+}
+
 $('#board-search')?.addEventListener('input', (event) => {
   boardSearchTerm = event.target.value.trim();
   renderBoard();
@@ -2724,10 +2769,13 @@ function renderBoard() {
   }));
  Store.save(Store.KEY_BONS, bonsList, { skipRemote: true });
 
-  let visibleBons = showAll || showUnassignedOnly ? bonsList : bonsList.filter(belongsToChef);
+  let visibleBons = showAll || showUnassignedOnly || showCharbo || showTarare
+    ? bonsList
+    : bonsList.filter(belongsToChef);
   if (showUnassignedOnly) {
     visibleBons = visibleBons.filter(hasNoResponsable);
   }
+  visibleBons = visibleBons.filter(bonMatchesSiteFilter);
   visibleBons.forEach((bon) => {
     const column = columns[bon.archived ? 'b-archive' : bon.pipe];
     if (!column) {
