@@ -323,6 +323,23 @@ function belongsToChef(item) {
   return team.some((name) => namesToMatch.includes(cleanText(name).toLowerCase()));
 }
 
+// Pour les devis specifiquement : Karine recupere aussi ceux qui lui sont
+// envoyes en tant que compta (champ "Envoyer a la compta"), en plus de ceux
+// ou elle est encadrante. Ne s'applique qu'a elle.
+function belongsToChefDevis(devis) {
+  if (belongsToChef(devis)) {
+    return true;
+  }
+
+  const chefLower = cleanText(CURRENT_USER).toLowerCase();
+  if (chefLower !== 'karine') {
+    return false;
+  }
+
+  const admin = cleanText(devis.admin || devis.raw?.['devis.admin']).toLowerCase();
+  return admin === 'karine';
+}
+
 function removeDevisByNum(num) {
   if (!num) {
     return;
@@ -2502,7 +2519,7 @@ function renderBoard() {
   }));
   Store.save(Store.KEY_DEVIS, devisList, { skipRemote: true });
 
-  let visibleDevis = showAll || showUnassignedOnly ? devisList : devisList.filter(belongsToChef);
+  let visibleDevis = showAll || showUnassignedOnly ? devisList : devisList.filter(belongsToChefDevis);
   if (showUnassignedOnly) {
     visibleDevis = visibleDevis.filter(hasNoResponsable);
   }
