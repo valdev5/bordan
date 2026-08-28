@@ -34,6 +34,7 @@
     </div>
     <nav class="tabs">
       <button class="tab active" data-tab="board">Tableau</button>
+      <button class="tab" data-tab="dashboard">Tableau de bord</button>
       <button class="tab" data-tab="planning">Planning</button>
       <button class="tab" data-tab="messagerie">Messagerie<span class="tab-badge" id="messagerie-tab-badge" style="display:none"></span></button>
       <button class="tab" data-tab="devis">Devis</button>
@@ -86,6 +87,76 @@
         <div class="col"><div class="col-head">BT – Chantier en cours</div><div id="b-encours" class="col-body"></div></div>
         <div class="col"><div class="col-head">BT – À facturer</div><div id="b-facturer" class="col-body"></div></div>
         <div class="col"><div class="col-head">BT – Archivés</div><div id="b-archive" class="col-body"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== TABLEAU DE BORD ===== -->
+    <section class="view" id="tab-dashboard">
+      <div class="dash-page">
+        <h2 class="title">Tableau de bord</h2>
+        <div class="small muted" id="dash-updated" style="margin-bottom:14px"></div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card accent-blue">
+            <span class="icon">🏗️</span>
+            <div class="label">Chantiers en cours</div>
+            <div class="value" id="dash-kpi-chantiers">–</div>
+          </div>
+
+          <div class="kpi-card accent-green">
+            <span class="icon">✍️</span>
+            <div class="label">Taux de signature client</div>
+            <div class="ring-wrap" style="margin-top:6px">
+              <svg class="ring" width="52" height="52" viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="22" fill="none" stroke="#1e2a35" stroke-width="6"/>
+                <circle id="dash-sign-ring" cx="26" cy="26" r="22" fill="none" stroke="#22c55e" stroke-width="6"
+                  stroke-dasharray="138.2" stroke-dashoffset="138.2" stroke-linecap="round"
+                  transform="rotate(-90 26 26)"/>
+              </svg>
+              <div class="ring-label"><strong id="dash-sign-pct">–</strong><span id="dash-sign-detail"></span></div>
+            </div>
+          </div>
+
+          <div class="kpi-card accent-amber">
+            <span class="icon">⏳</span>
+            <div class="label">Devis en attente</div>
+            <div class="value" id="dash-kpi-devis-attente">–</div>
+            <div class="delta warn" id="dash-devis-age-moyen"></div>
+          </div>
+
+          <div class="kpi-card accent-red">
+            <span class="icon">🔴</span>
+            <div class="label">Devis urgents en attente</div>
+            <div class="value" id="dash-kpi-devis-urgent">–</div>
+            <div class="delta down">À traiter en priorité</div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="section">
+            <h2>Devis en attente depuis le plus longtemps</h2>
+            <div class="sub">Non signés, non refusés — triés par ancienneté</div>
+            <table>
+              <thead>
+                <tr><th>Client</th><th>Devis</th><th>Urgence</th><th>Depuis</th></tr>
+              </thead>
+              <tbody id="dash-devis-attente-body"></tbody>
+            </table>
+            <div class="small muted" id="dash-devis-attente-empty" style="display:none; padding:8px 0">Aucun devis en attente.</div>
+          </div>
+
+          <div class="section">
+            <h2>Chantiers par étape</h2>
+            <div class="sub">Répartition des bons actifs</div>
+            <div id="dash-pipe-bars"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Répartition par site</h2>
+          <div class="sub">Bons actifs, équipe affectée</div>
+          <div id="dash-site-bars"></div>
+        </div>
       </div>
     </section>
 

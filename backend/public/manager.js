@@ -1549,6 +1549,14 @@ function showTab(name) {
     }
   }
 
+  if (name === 'dashboard') {
+    try {
+      renderDashboard();
+    } catch (error) {
+      console.warn('renderDashboard a echoue', error);
+    }
+  }
+
   if (name === 'devis') {
     setTimeout(initDevisDefaults, 0);
   }
@@ -2650,6 +2658,183 @@ function getBonPipe(bon) {
   return bon.pipe || (bon.status === 'facturer' ? 'b-facturer' : 'b-pret');
 }
 
+function renderDashboard() {
+  const devisList = Store.load(Store.KEY_DEVIS) || [];
+  const bonsList = Store.load(Store.KEY_BONS) || [];
+
+  const updatedEl = $('#dash-updated');
+  if (updatedEl) {
+    updatedEl.textContent = `Mise a jour : ${new Date().toLocaleString()}`;
+  }
+
+  // Chantiers en cours : bons non archives, pas encore factures.
+  const activeBons = bonsList.filter((bon) => !bon.archived && bon.status !== 'facturer');
+  const kpiChantiers = $('#dash-kpi-chantiers');
+  if (kpiChantiers) {
+    kpiChantiers.textContent = String(activeBons.length);
+  }
+
+  // Taux de signature client : parmi les bons factures (chantier termine),
+  // combien ont ete signes avec le client present.
+  const finishedBons = bonsList.filter((bon) => bon.status === 'facturer');
+  const signedBons = finishedBons.filter((bon) => bon.signature?.present === true);
+  const signRate = finishedBons.length ? Math.round((signedBons.length / finishedBons.length) * 100) : 0;
+
+  const signPct = $('#dash-sign-pct');
+  const signDetail = $('#dash-sign-detail');
+  const signRing = $('#dash-sign-ring');
+  if (signPct) {
+    signPct.textContent = finishedBons.length ? `${signRate}%` : '–';
+  }
+  if (signDetail) {
+    signDetail.textContent = finishedBons.length
+      ? `${signedBons.length} / ${finishedBons.length} chantiers termines signes`
+      : 'Aucun chantier termine';
+  }
+  if (signRing) {
+    const circumference = 138.2;
+    signRing.style.strokeDashoffset = String(circumference - (circumference * signRate) / 100);
+  }
+
+  // Devis en attente : ni accepte, ni refuse.
+  const pendingDevis = devisList.filter(
+    (devis) => devis.refuse !== 'oui' && !(devis.signe === 'oui' && devis.acompte === 'oui') && getDevisPipeline(devis) !== 'd-accepte',
+  );
+  const now = Date.now();
+  const withAge = pendingDevis.map((devis) => {
+    const dateStr = devis.raw?.['devis.date_demande'] || devis.raw?.['devis.date_devis'] || '';
+    const ts = dateStr ? new Date(dateStr).getTime() : NaN;
+    const ageDays = Number.isFinite(ts) ? Math.max(0, Math.floor((now - ts) / 86400000)) : null;
+    return { devis, ageDays };
+  });
+
+  const kpiDevisAttente = $('#dash-kpi-devis-attente');
+  if (kpiDevisAttente) {
+    kpiDevisAttente.textContent = String(pendingDevis.length);
+  }
+
+  const knownAges = withAge.filter((entry) => entry.ageDays !== null);
+  const avgAge = knownAges.length
+    ? Math.round((knownAges.reduce((sum, entry) => sum + entry.ageDays, 0) / knownAges.length) * 10) / 10
+    : null;
+  const ageMoyenEl = $('#dash-devis-age-moyen');
+  if (ageMoyenEl) {
+    ageMoyenEl.textContent = avgAge !== null ? `Age moyen : ${avgAge} jours` : '';
+  }
+
+  const urgentPending = pendingDevis.filter((devis) => devis.urgence === 'urgent' || devis.urgence === 'tres urgent');
+  const kpiUrgent = $('#dash-kpi-devis-urgent');
+  if (kpiUrgent) {
+    kpiUrgent.textContent = String(urgentPending.length);
+  }
+
+  // Table : 5 devis en attente les plus anciens.
+  const sortedByAge = knownAges.slice().sort((a, b) => b.ageDays - a.ageDays).slice(0, 5);
+  const tbody = $('#dash-devis-attente-body');
+  const emptyEl = $('#dash-devis-attente-empty');
+  if (tbody) {
+    if (!sortedByAge.length) {
+      tbody.innerHTML = '';
+      if (emptyEl) {
+        emptyEl.style.display = '';
+      }
+    } else {
+      if (emptyEl) {
+        emptyEl.style.display = 'none';
+      }
+      tbody.innerHTML = sortedByAge
+        .map(({ devis, ageDays }) => {
+          const urgenceBadge = devis.urgence === 'tres urgent'
+            ? '<span class="badge tres-urgent">Tres urgent</span>'
+            : devis.urgence === 'urgent'
+              ? '<span class="badge urgent">Urgent</span>'
+              : '<span class="badge">Normal</span>';
+          const ageClass = ageDays >= 10 ? 'age-bad' : ageDays >= 5 ? 'age-warn' : 'age-ok';
+          return `
+            <tr>
+              <td>${escapeHtml(devis.client || 'Client ?')}</td>
+              <td>${escapeHtml(devis.num || '-')}</td>
+              <td>${urgenceBadge}</td>
+              <td><span class="age-pill ${ageClass}">${ageDays} j</span></td>
+            </tr>
+          `;
+        })
+        .join('');
+    }
+  }
+
+  // Repartition par etape (bons actifs, non archives).
+  const pipeLabels = {
+    'b-pret': 'Pret / attente',
+    'b-affect': 'RDV + affect.',
+    'b-encours': 'En cours',
+    'b-facturer': 'A facturer',
+  };
+  const pipeColors = {
+    'b-pret': '#64748b',
+    'b-affect': '#0ea5e9',
+    'b-encours': '#f59e0b',
+    'b-facturer': '#22c55e',
+  };
+  const pipeCounts = { 'b-pret': 0, 'b-affect': 0, 'b-encours': 0, 'b-facturer': 0 };
+  bonsList
+    .filter((bon) => !bon.archived)
+    .forEach((bon) => {
+      const pipe = getBonPipe(bon);
+      if (pipeCounts[pipe] !== undefined) {
+        pipeCounts[pipe] += 1;
+      }
+    });
+  const maxPipe = Math.max(1, ...Object.values(pipeCounts));
+  const pipeBarsEl = $('#dash-pipe-bars');
+  if (pipeBarsEl) {
+    pipeBarsEl.innerHTML = Object.keys(pipeLabels)
+      .map(
+        (key) => `
+          <div class="bar-row">
+            <div class="bar-label">${pipeLabels[key]}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(pipeCounts[key] / maxPipe) * 100}%; background:${pipeColors[key]}"></div></div>
+            <div class="bar-value">${pipeCounts[key]}</div>
+          </div>
+        `,
+      )
+      .join('');
+  }
+
+  // Repartition Charbo / Tarare (bons actifs).
+  let charboCount = 0;
+  let tarareCount = 0;
+  bonsList
+    .filter((bon) => !bon.archived)
+    .forEach((bon) => {
+      const team = Array.isArray(bon.team) ? bon.team : [];
+      const hasCharbo = team.some((name) => (TEAM_SITE_MAP[cleanText(name)] || []).includes('Charbo'));
+      const hasTarare = team.some((name) => (TEAM_SITE_MAP[cleanText(name)] || []).includes('Tarare'));
+      if (hasCharbo) {
+        charboCount += 1;
+      }
+      if (hasTarare) {
+        tarareCount += 1;
+      }
+    });
+  const maxSite = Math.max(1, charboCount, tarareCount);
+  const siteBarsEl = $('#dash-site-bars');
+  if (siteBarsEl) {
+    siteBarsEl.innerHTML = `
+      <div class="bar-row">
+        <div class="bar-label">Charbo</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(charboCount / maxSite) * 100}%"></div></div>
+        <div class="bar-value">${charboCount}</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Tarare</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(tarareCount / maxSite) * 100}%; background:#a78bfa"></div></div>
+        <div class="bar-value">${tarareCount}</div>
+      </div>
+    `;
+  }
+}
+
 function renderBoard() {
   const columns = getBoardColumns();
   Object.values(columns)
@@ -2983,6 +3168,9 @@ window.addEventListener('shared-store-changed', () => {
   if ($('#tab-messagerie')?.classList.contains('show')) {
     refreshMessagerie();
   }
+  if ($('#tab-dashboard')?.classList.contains('show')) {
+    renderDashboard();
+  }
   updateMessagerieTabBadge();
 });
 
@@ -3001,6 +3189,9 @@ setInterval(() => {
     .then(() => {
       if ($('#tab-board')?.classList.contains('show') && !boardHasFocusedControl()) {
         renderBoard();
+      }
+      if ($('#tab-dashboard')?.classList.contains('show')) {
+        renderDashboard();
       }
     })
     .catch((error) => {
