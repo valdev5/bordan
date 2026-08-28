@@ -2727,6 +2727,8 @@ function renderBoard() {
         ? `<span class="badge badge-neon" title="Messages non lus"><span class="badge-neon-icon">🔔</span>${unread} nouveau${unread > 1 ? 'x' : ''}</span>`
         : '';
     const rdvBadge = rdvUrgencyBadgeHtml(bon);
+    const admin = cleanText(bon.admin || bon.raw?.['bon.admin']);
+    const adminBadge = admin ? `<span class="badge" style="border-color:var(--success); color:var(--success)">💼 Compta : ${escapeHtml(admin)}</span>` : '';
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -2737,7 +2739,7 @@ function renderBoard() {
       </div>
       ${displayPeopleChips(bon)}
       <div class="small" style="margin:4px 0">${escapeHtml((bon.objet || '').slice(0, 100))}</div>
-      <div class="badge-row" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px">${rdvBadge}${unreadBadge}</div>
+      <div class="badge-row" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px">${adminBadge}${rdvBadge}${unreadBadge}</div>
       <div class="row" style="margin-top:6px">
         <label>Etape</label>
         <select class="pipe">
