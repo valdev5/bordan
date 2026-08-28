@@ -152,6 +152,20 @@ function bonMatchesSiteFilter(bon) {
   });
 }
 
+// Un devis n'a pas encore d'equipe affectee : on se base sur l'encadrant
+// (Vivien/Laurent = Charbo, Cedric A/Cedric M = Tarare) pour savoir de quel
+// site il s'agit.
+function devisMatchesSiteFilter(devis) {
+  if (!showCharbo && !showTarare) {
+    return true;
+  }
+  const encadrants = getEncadrantsForItem(devis);
+  return encadrants.some((name) => {
+    const sites = TEAM_SITE_MAP[cleanText(name)] || [];
+    return (showCharbo && sites.includes('Charbo')) || (showTarare && sites.includes('Tarare'));
+  });
+}
+
 function hasNoResponsable(item) {
   const encadrants = Array.isArray(item.encadrants) ? item.encadrants.filter(Boolean) : [];
   return !encadrants.length && !cleanText(item.encadrant || '');
@@ -2653,10 +2667,13 @@ function renderBoard() {
   }));
   Store.save(Store.KEY_DEVIS, devisList, { skipRemote: true });
 
-  let visibleDevis = showAll || showUnassignedOnly ? devisList : devisList.filter(belongsToChefDevis);
+  let visibleDevis = showAll || showUnassignedOnly || showCharbo || showTarare
+    ? devisList
+    : devisList.filter(belongsToChefDevis);
   if (showUnassignedOnly) {
     visibleDevis = visibleDevis.filter(hasNoResponsable);
   }
+  visibleDevis = visibleDevis.filter(devisMatchesSiteFilter);
 
   // Les devis urgents remontent en premier dans leur colonne (tri stable :
   // a urgence egale, l'ordre d'origine est conserve).
