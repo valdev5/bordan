@@ -93,6 +93,12 @@ if (!window.Store) {
 /* State */
 const SHOW_ALL_KEY = 'SHOW_ALL_FOR_MANAGER';
 let showAll = localStorage.getItem(SHOW_ALL_KEY) === '1';
+let showUnassignedOnly = false;
+
+function hasNoResponsable(item) {
+  const encadrants = Array.isArray(item.encadrants) ? item.encadrants.filter(Boolean) : [];
+  return !encadrants.length && !cleanText(item.encadrant || '');
+}
 let boardSearchTerm = '';
 let currentDevisId = null;
 let currentBonId = null;
@@ -1440,6 +1446,14 @@ if (showAllToggle) {
   };
 }
 
+const showUnassignedToggle = $('#show-unassigned');
+if (showUnassignedToggle) {
+  showUnassignedToggle.onchange = () => {
+    showUnassignedOnly = !!showUnassignedToggle.checked;
+    renderBoard();
+  };
+}
+
 $('#board-search')?.addEventListener('input', (event) => {
   boardSearchTerm = event.target.value.trim();
   renderBoard();
@@ -2409,7 +2423,10 @@ function renderBoard() {
   }));
   Store.save(Store.KEY_DEVIS, devisList, { skipRemote: true });
 
-  const visibleDevis = showAll ? devisList : devisList.filter(belongsToChef);
+  let visibleDevis = showAll || showUnassignedOnly ? devisList : devisList.filter(belongsToChef);
+  if (showUnassignedOnly) {
+    visibleDevis = visibleDevis.filter(hasNoResponsable);
+  }
   visibleDevis.forEach((devis) => {
     const column = columns[devis.pipeline];
     if (!column) {
@@ -2516,7 +2533,10 @@ function renderBoard() {
   }));
  Store.save(Store.KEY_BONS, bonsList, { skipRemote: true });
 
-  const visibleBons = showAll ? bonsList : bonsList.filter(belongsToChef);
+  let visibleBons = showAll || showUnassignedOnly ? bonsList : bonsList.filter(belongsToChef);
+  if (showUnassignedOnly) {
+    visibleBons = visibleBons.filter(hasNoResponsable);
+  }
   visibleBons.forEach((bon) => {
     const column = columns[bon.archived ? 'b-archive' : bon.pipe];
     if (!column) {
