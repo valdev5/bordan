@@ -314,12 +314,21 @@ function renderWork() {
 
   wrap.innerHTML = '';
 
+  const who = cleanTextWorker(CURRENT_USER);
+  const showArchived = document.getElementById('show-archived-missions')?.checked || false;
   const all = Store.load(Store.KEY_BONS) || [];
-  const mine = isManager(CURRENT_USER)
+  const mineAll = isManager(CURRENT_USER)
     ? all
     : all.filter((bon) => (bon.team || []).includes(CURRENT_USER));
+  const mine = mineAll.filter((bon) => {
+    const isArchived = !!bon.archivedByWorker?.[who];
+    return showArchived ? isArchived : !isArchived;
+  });
 
   if (!mine.length) {
+    empty.textContent = showArchived
+      ? 'Aucune mission archivee.'
+      : 'Aucun bon ne t’est affecte pour le moment.';
     empty.style.display = '';
     renderPlanning();
     return;
@@ -366,6 +375,9 @@ function renderWork() {
     const userStatus = (bon.progress && bon.progress[CURRENT_USER]) || 'Commencement';
     const myHoursArr = bon.hours?.[CURRENT_USER] || [];
     const myTotal = myHoursArr.reduce((sum, hour) => sum + (parseFloat(hour.h) || 0), 0);
+
+    const isMissionFinished = bon.status === 'facturer' || !!bon.signature;
+    const isMissionArchived = !!bon.archivedByWorker?.[who];
 
     const isExpanded = expandedWorkCardIds.has(String(bon.id));
     const unreadCount = countUnreadForWorker(bon, cleanTextWorker(CURRENT_USER));
@@ -490,6 +502,14 @@ function renderWork() {
           ? window.renderSignatureStatusHtml(bon.signature)
           : '<button type="button" class="btn success sig-open" style="width:100%">Terminer le chantier</button>'}
       </div>
+
+      ${isMissionFinished ? `
+        <div style="margin-top:10px">
+          <button type="button" class="btn outline archive-mission" style="width:100%">
+            ${isMissionArchived ? '📂 Desarchiver' : '📦 Archiver cette mission'}
+          </button>
+        </div>
+      ` : ''}
 
       <div class="small" style="margin-top:8px">Mes dernieres lignes:</div>
       <div class="small" data-wlog>-</div>
@@ -789,6 +809,29 @@ function renderWork() {
         allBons[index] = copy;
         Store.save(Store.KEY_BONS, allBons);
 
+        renderWork();
+      });
+    }
+
+    const archiveButton = card.querySelector('.archive-mission');
+    if (archiveButton) {
+      archiveButton.addEventListener('click', () => {
+        const allBons = Store.load(Store.KEY_BONS);
+        const index = allBons.findIndex((entry) => entry.id === bon.id);
+        if (index < 0) {
+          return;
+        }
+
+        const copy = { ...allBons[index] };
+        copy.archivedByWorker = { ...(copy.archivedByWorker || {}) };
+        if (isMissionArchived) {
+          delete copy.archivedByWorker[who];
+        } else {
+          copy.archivedByWorker[who] = true;
+        }
+
+        allBons[index] = copy;
+        Store.save(Store.KEY_BONS, allBons);
         renderWork();
       });
     }
@@ -1110,6 +1153,10 @@ function updateMessagerieTabBadge() {
     badge.style.display = 'none';
   }
 }
+
+document.getElementById('show-archived-missions')?.addEventListener('change', () => {
+  renderWork();
+});
 
 window.addEventListener('shared-store-changed', () => {
   renderWork();
