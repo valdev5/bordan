@@ -1833,6 +1833,15 @@ function resetManagerChatAndGallery() {
     photoAdd.onclick = null;
     photoAdd.disabled = true;
   }
+
+  const signatureBox = $('#mgr-signature-box');
+  const signatureButton = $('#mgr-sig-open');
+  if (signatureBox) {
+    signatureBox.textContent = 'Enregistrez le bon pour activer la signature.';
+  }
+  if (signatureButton) {
+    signatureButton.style.display = 'none';
+  }
 }
 
 function resetDirectBonForm() {
@@ -2075,6 +2084,7 @@ function initManagerGallery(bon) {
 // l'intervenant a la fin du chantier).
 function renderManagerSignature(bon) {
   const box = $('#mgr-signature-box');
+  const button = $('#mgr-sig-open');
   if (!box) {
     return;
   }
@@ -2083,7 +2093,45 @@ function renderManagerSignature(bon) {
   box.innerHTML = fresh.signature
     ? window.renderSignatureStatusHtml(fresh.signature)
     : "Chantier pas encore termine par l'intervenant.";
+
+  if (button) {
+    button.style.display = bon.id ? '' : 'none';
+  }
 }
+
+$('#mgr-sig-open')?.addEventListener('click', async () => {
+  if (!currentBonId) {
+    return;
+  }
+
+  const result = await window.openSignatureFlow();
+  if (!result) {
+    return;
+  }
+
+  const allBons = Store.load(Store.KEY_BONS);
+  const index = allBons.findIndex((entry) => entry.id === currentBonId);
+  if (index < 0) {
+    alert('Bon introuvable.');
+    return;
+  }
+
+  const copy = { ...allBons[index] };
+  copy.signature = {
+    present: result.present,
+    dataUrl: result.present ? result.dataUrl : null,
+    from: CURRENT_USER,
+    ts: Date.now(),
+    date: new Date().toLocaleString(),
+  };
+  copy.progress = copy.progress || {};
+  copy.progress[CURRENT_USER] = 'Termine';
+  copy.status = 'facturer';
+
+  allBons[index] = copy;
+  Store.save(Store.KEY_BONS, allBons);
+  renderManagerSignature(copy);
+});
 
 // Un devis pas encore enregistre n'a pas d'id : les photos doivent rester
 // desactivees tant qu'il n'a pas ete sauvegarde une premiere fois.
@@ -2334,7 +2382,7 @@ $('#load-devis')?.addEventListener('click', () => {
 });
 
 /* Bon */
-$('#save-bon')?.addEventListener('click', async () => {
+$('#save-bon')?.addEventListener('click', () => {
   const raw = serializeNamedFields('bon');
   const list = Store.load(Store.KEY_BONS);
 
@@ -2392,36 +2440,7 @@ $('#save-bon')?.addEventListener('click', async () => {
 
   Store.save(Store.KEY_BONS, Store.upsertByField(list, item, 'num_devis', currentBonId));
 
-  const saved = Store.load(Store.KEY_BONS).find((entry) => entry.num_devis === item.num_devis);
-
-  // Si l'encadrant fait l'intervention lui-meme et vient de la terminer, il
-  // peut faire signer le client tout de suite, sans passer par un bouton
-  // "Terminer le chantier" separe.
-  if (saved && confirm("Bon enregistre. Terminez-vous l'intervention maintenant (signature client) ?")) {
-    const result = await window.openSignatureFlow();
-    if (result) {
-      const allBons = Store.load(Store.KEY_BONS);
-      const index = allBons.findIndex((entry) => entry.id === saved.id);
-      if (index >= 0) {
-        const copy = { ...allBons[index] };
-        copy.signature = {
-          present: result.present,
-          dataUrl: result.present ? result.dataUrl : null,
-          from: CURRENT_USER,
-          ts: Date.now(),
-          date: new Date().toLocaleString(),
-        };
-        copy.progress = copy.progress || {};
-        copy.progress[CURRENT_USER] = 'Termine';
-        copy.status = 'facturer';
-        allBons[index] = copy;
-        Store.save(Store.KEY_BONS, allBons);
-      }
-    }
-  } else {
-    alert('Bon enregistre.');
-  }
-
+  alert('Bon enregistre.');
   prepareNewBonForm();
   showTab('board');
 });
