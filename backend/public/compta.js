@@ -1057,4 +1057,146 @@ setInterval(() => {
     .catch((error) => {
       console.warn('Impossible d actualiser les bons partages', error);
     });
-}, 5000);
+  }, 6000);
+
+/*************************************************
+ * Feuilles kilometriques (espace compta)
+ **************************************************/
+(function () {
+  const listEl = document.getElementById('km-compta-list');
+  const emptyEl = document.getElementById('km-compta-empty');
+  const badgeEl = document.getElementById('tab-badge-km');
+  const showArchivedToggle = document.getElementById('km-show-archived');
+  if (!listEl) return; // page sans onglet kilometrique
+
+  let sheets = [];
+
+  function escapeHtmlKm(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function fmtKm(n) {
+    return (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
+  }
+
+  function moisLabel(mois) {
+    try {
+      const [y, m] = mois.split('-');
+      return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    } catch { return mois; }
+  }
+
+  function buildSheetTable(sheet) {
+    const rows = (sheet.trajets || []).slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    const body = rows.map((t) => {
+      const dateFmt = new Date(`${t.date}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const title = escapeHtmlKm(t.detail || t.lieu);
+      const sub = t.commune ? ` — ${escapeHtmlKm(t.commune)}` : '';
+      return `<tr><td>${dateFmt}</td><td>${title}${sub}</td><td>${fmtKm(t.oneWay)}</td><td>${fmtKm(t.oneWay * 2)}</td></tr>`;
+    }).join('');
+    return `<table><thead><tr><th>Date</th><th>Lieu</th><th>Km aller</th><th>Km A/R</th></tr></thead><tbody>${body}</tbody><tfoot><tr><td colspan="3"><strong>Total</strong></td><td><strong>${fmtKm(sheet.total)}</strong></td></tr></tfoot></table>`;
+  }
+
+  function printSheet(sheet) {
+    const popup = window.open('', '_blank', 'width=900,height=700');
+    if (!popup) return;
+    popup.document.write(`
+      <html><head>
+        <title>Feuille kilométrique — ${escapeHtmlKm(sheet.username)} — ${sheet.mois}</title>
+        <style>
+          body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; padding:20px; color:#111;}
+          h1{margin:0 0 4px;} .muted{color:#666; margin-bottom:14px;}
+          table{width:100%;border-collapse:collapse;margin-top:6px}
+          th,td{border:1px solid #ccc;padding:6px;text-align:left;font-size:13px}
+          @media print {.noprint{display:none}}
+        </style>
+      </head><body>
+        <div class="noprint" style="text-align:right;margin-bottom:10px"><button onclick="window.print()">Imprimer</button></div>
+        <h1>Feuille kilométrique</h1>
+        <div class="muted">${escapeHtmlKm(sheet.username)} — ${sheet.mois} — départ 92 Route de Paris, 69260 Charbonnières-les-Bains</div>
+        ${buildSheetTable(sheet)}
+      </body></html>
+    `);
+    popup.document.close();
+  }
+
+  function render() {
+    const showArchived = showArchivedToggle?.checked;
+    const visible = sheets.filter((s) => showArchived || s.statut !== 'archivee');
+
+    const pending = sheets.filter((s) => s.statut !== 'archivee').length;
+    if (badgeEl) {
+      badgeEl.style.display = pending ? '' : 'none';
+      badgeEl.textContent = String(pending);
+    }
+
+    if (!visible.length) {
+      emptyEl.style.display = '';
+      emptyEl.textContent = showArchived ? 'Aucune feuille pour le moment.' : 'Aucune feuille en attente pour le moment.';
+      listEl.innerHTML = '';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    const sorted = visible.slice().sort((a, b) => {
+      if (a.mois !== b.mois) return a.mois < b.mois ? 1 : -1;
+      return a.username.localeCompare(b.username, 'fr');
+    });
+
+    listEl.innerHTML = sorted.map((s) => {
+      const badge = s.statut === 'archivee' ? '<span class="badge">archivée</span>' : '<span class="badge">à traiter</span>';
+      const when = s.statut === 'archivee' ? `Archivée le ${new Date(s.archiveLe).toLocaleString('fr-FR')}` : `Envoyée le ${new Date(s.envoyeLe).toLocaleString('fr-FR')}`;
+      return `
+        <div class="km-row" data-id="${s.id}">
+          <div class="km-row-main"><strong>${escapeHtmlKm(s.username)}</strong><span class="small muted">${moisLabel(s.mois)}</span>${badge}</div>
+          <div class="small muted">${(s.trajets || []).length} trajet(s) · ${fmtKm(s.total)} · ${when}</div>
+          <div class="actions left">
+            <button type="button" class="btn outline" data-action="print" data-id="${s.id}">Imprimer</button>
+            <button type="button" class="btn primary" data-action="archive" data-id="${s.id}">${s.statut === 'archivee' ? 'Désarchiver' : 'Archiver'}</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('[data-action="print"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const sheet = sheets.find((s) => String(s.id) === btn.dataset.id);
+        if (sheet) printSheet(sheet);
+      });
+    });
+    listEl.querySelectorAll('[data-action="archive"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const sheet = sheets.find((s) => String(s.id) === btn.dataset.id);
+        if (!sheet) return;
+        const archive = sheet.statut !== 'archivee';
+        btn.disabled = true;
+        try {
+          await apiFetch(`/kilometrique/${sheet.id}/archiver`, { method: 'PATCH', body: { archive } });
+          await refresh();
+        } catch (error) {
+          alert(error.message || 'Échec.');
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  async function refresh() {
+    try {
+      sheets = await apiFetch('/kilometrique');
+      render();
+    } catch (error) {
+      console.warn('Impossible de charger les feuilles kilometriques', error);
+    }
+  }
+
+  showArchivedToggle?.addEventListener('change', render);
+
+  refresh();
+  setInterval(refresh, 15000);
+})();

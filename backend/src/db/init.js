@@ -67,6 +67,22 @@ function initDb() {
     `);
 
     db.run(`
+      CREATE TABLE IF NOT EXISTS km_sheets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        mois TEXT NOT NULL,
+        trajets_json TEXT NOT NULL DEFAULT '[]',
+        total_km REAL NOT NULL DEFAULT 0,
+        statut TEXT NOT NULL DEFAULT 'envoyee' CHECK(statut IN ('envoyee','archivee')),
+        envoye_le TEXT NOT NULL DEFAULT (datetime('now')),
+        archive_le TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        UNIQUE(user_id, mois)
+      )
+    `);
+
+    db.run(`
       CREATE TABLE IF NOT EXISTS calendar_tokens (
         username TEXT PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,

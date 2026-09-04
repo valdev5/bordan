@@ -38,6 +38,7 @@
     <button class="tab" data-compta-tab="nouveau">Nouveau devis</button>
     <button class="tab" data-compta-tab="bon">Bon de travail</button>
     <button class="tab" data-compta-tab="bt-depannage">BT dépannage</button>
+    <button class="tab" data-compta-tab="kilometrique">Feuilles kilométriques <span class="tab-badge" id="tab-badge-km" style="display:none;">0</span></button>
   </div>
 
   <main class="container">
@@ -461,6 +462,19 @@
         <div class="actions">
           <button class="btn primary" id="save-bon-direct-compta">Créer BT dépannage</button>
         </div>
+      </div>
+    </section>
+
+    <section class="view" id="tab-compta-kilometrique">
+      <div class="sheet">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px">
+          <h2 class="title" style="margin:0">Feuilles kilométriques envoyées par les intervenants</h2>
+          <label class="checkbox-inline">
+            <input type="checkbox" id="km-show-archived"> Afficher les feuilles archivées
+          </label>
+        </div>
+        <div id="km-compta-empty" class="tips" style="display:none">Aucune feuille en attente pour le moment.</div>
+        <div id="km-compta-list" class="km-list"></div>
       </div>
     </section>
   </main>

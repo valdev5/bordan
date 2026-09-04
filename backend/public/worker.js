@@ -1184,3 +1184,373 @@ setInterval(() => {
       console.warn('Impossible d actualiser les bons partages', error);
     });
 }, 6000);
+
+/*************************************************
+ * Feuille kilometrique
+ **************************************************/
+(function () {
+  const ORIGIN = { lat: 45.777896, lon: 4.75131 };
+  const KM_DRAFT_KEY = `km-draft-${CURRENT_USER || 'anon'}`;
+
+  let COMMUNES = [];
+  let communesReady = fetch('communes.json')
+    .then((r) => r.json())
+    .then((data) => { COMMUNES = Array.isArray(data) ? data : []; })
+    .catch(() => { COMMUNES = []; });
+
+  function kmNormalize(s) {
+    return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  }
+
+  function haversineKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function isAlnum(ch) { return /[a-z0-9]/.test(ch); }
+  function wordBoundaryContains(haystack, needle) {
+    const idx = haystack.indexOf(needle);
+    if (idx === -1) return false;
+    const before = idx === 0 || !isAlnum(haystack[idx - 1]);
+    const endIdx = idx + needle.length;
+    const after = endIdx === haystack.length || !isAlnum(haystack[endIdx]);
+    return before && after;
+  }
+
+  function fmtKm(n) {
+    return (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
+  }
+
+  function searchCommunes(query) {
+    const nq = kmNormalize(query);
+    if (nq.length < 2) return [];
+    const cpMatch = query.match(/\b(\d{5})\b/);
+    const cp = cpMatch ? cpMatch[1] : null;
+    let results = [];
+    if (cp) {
+      for (const c of COMMUNES) {
+        if (c[1] === cp) results.push({ name: c[0], cp, lat: c[2], lon: c[3], priority: 0 });
+      }
+      if (results.length) {
+        results.sort((a, b) => a.name.length - b.name.length);
+        return results.slice(0, 8);
+      }
+    }
+    for (const c of COMMUNES) {
+      const [name, ccp, lat, lon] = c;
+      const nname = kmNormalize(name);
+      let priority = null;
+      if (nname === nq) priority = 0;
+      else if (nname.length >= 3 && wordBoundaryContains(nq, nname)) priority = 1;
+      else if (nname.indexOf(nq) === 0) priority = 2;
+      else if (nname.indexOf(nq) > -1) priority = 3;
+      if (priority !== null) {
+        results.push({ name, cp: ccp, lat, lon, priority });
+        if (results.length > 400) break;
+      }
+    }
+    results.sort((a, b) => (a.priority !== b.priority ? a.priority - b.priority : a.name.length - b.name.length));
+    return results.slice(0, 8);
+  }
+
+  function autoDetectCommune(results) {
+    if (!results.length || results[0].priority > 1) return null;
+    if (results.length === 1 || results[1].priority > results[0].priority) return results[0];
+    return null;
+  }
+
+  function loadDraft() {
+    try { return JSON.parse(localStorage.getItem(KM_DRAFT_KEY) || '[]'); } catch { return []; }
+  }
+  function saveDraft(list) {
+    try { localStorage.setItem(KM_DRAFT_KEY, JSON.stringify(list)); } catch {}
+  }
+
+  let kmTrips = loadDraft();
+  let selectedCommune = null;
+  let currentResults = [];
+
+  const lieuInput = document.getElementById('km-lieu');
+  const suggestionsBox = document.getElementById('km-suggestions');
+  const detailInput = document.getElementById('km-detail');
+  const dateInput = document.getElementById('km-date');
+  const moisInput = document.getElementById('km-mois');
+  const manualToggle = document.getElementById('km-manual-toggle');
+  const manualWrap = document.getElementById('km-manual-wrap');
+  const manualInput = document.getElementById('km-manual');
+  const previewEl = document.getElementById('km-preview');
+  const addBtn = document.getElementById('km-add-btn');
+  const tripBody = document.getElementById('km-trip-body');
+  const totalEl = document.getElementById('km-total');
+  const sendStatusEl = document.getElementById('km-send-status');
+  const sendBtn = document.getElementById('km-send-btn');
+  const historyEmpty = document.getElementById('km-history-empty');
+  const historyList = document.getElementById('km-history-list');
+
+  if (!lieuInput || !moisInput) return; // page sans feuille kilometrique
+
+  function currentMonthISO() { return today().slice(0, 7); }
+  dateInput.value = today();
+  moisInput.value = currentMonthISO();
+
+  function renderPreview() {
+    if (manualToggle.checked) {
+      const v = parseFloat(manualInput.value);
+      previewEl.textContent = (Number.isFinite(v) && v > 0)
+        ? `Aller ${fmtKm(v)} · Aller-retour ${fmtKm(v * 2)}`
+        : 'Indiquez le km aller.';
+      return;
+    }
+    if (!selectedCommune) {
+      previewEl.textContent = "Tapez l'adresse (rue, code postal, ville) : la commune est reconnue automatiquement.";
+      return;
+    }
+    const oneWay = haversineKm(ORIGIN.lat, ORIGIN.lon, selectedCommune.lat, selectedCommune.lon);
+    previewEl.textContent = `Commune reconnue : ${selectedCommune.name} (${selectedCommune.cp}) · Aller ≈ ${fmtKm(oneWay)} · Aller-retour ≈ ${fmtKm(oneWay * 2)}`;
+  }
+
+  function updateAddButton() {
+    if (manualToggle.checked) {
+      const v = parseFloat(manualInput.value);
+      addBtn.disabled = !(Number.isFinite(v) && v > 0);
+    } else {
+      addBtn.disabled = !selectedCommune;
+    }
+  }
+
+  function renderSuggestions(list) {
+    if (!list.length) {
+      suggestionsBox.innerHTML = lieuInput.value.trim().length >= 2 ? '<div class="km-suggestion-empty">Aucune commune trouvée</div>' : '';
+      suggestionsBox.classList.toggle('open', lieuInput.value.trim().length >= 2);
+      return;
+    }
+    suggestionsBox.innerHTML = list.map((c, idx) => {
+      const active = selectedCommune && selectedCommune.cp === c.cp && selectedCommune.name === c.name;
+      return `<button type="button" class="${active ? 'active' : ''}" data-idx="${idx}"><span>${escapeHtmlWorker(c.name)}</span><span class="cp">${c.cp}</span></button>`;
+    }).join('');
+    suggestionsBox.classList.add('open');
+    suggestionsBox.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectedCommune = list[parseInt(btn.dataset.idx, 10)];
+        suggestionsBox.classList.remove('open');
+        renderPreview();
+        updateAddButton();
+      });
+    });
+  }
+
+  lieuInput.addEventListener('input', () => {
+    currentResults = searchCommunes(lieuInput.value);
+    selectedCommune = autoDetectCommune(currentResults);
+    renderSuggestions(currentResults);
+    renderPreview();
+    updateAddButton();
+  });
+  lieuInput.addEventListener('focus', () => { if (currentResults.length) suggestionsBox.classList.add('open'); });
+  document.addEventListener('click', (e) => {
+    if (!suggestionsBox.contains(e.target) && e.target !== lieuInput) suggestionsBox.classList.remove('open');
+  });
+
+  manualToggle.addEventListener('change', () => {
+    manualWrap.style.display = manualToggle.checked ? '' : 'none';
+    renderPreview();
+    updateAddButton();
+  });
+  manualInput.addEventListener('input', () => { renderPreview(); updateAddButton(); });
+
+  function tripsForMonth() {
+    const m = moisInput.value;
+    return kmTrips.filter((t) => t.date && t.date.slice(0, 7) === m).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  }
+
+  function renderTripTable() {
+    const list = tripsForMonth();
+    if (!list.length) {
+      tripBody.innerHTML = '<tr><td colspan="5" class="tips">Aucun trajet enregistré pour ce mois.</td></tr>';
+      totalEl.textContent = fmtKm(0);
+      return;
+    }
+    let total = 0;
+    tripBody.innerHTML = list.map((t) => {
+      total += t.oneWay * 2;
+      const badge = t.mode === 'manuel' ? '<span class="badge">manuel</span>' : '<span class="badge">estimé</span>';
+      const dateFmt = new Date(`${t.date}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const title = t.detail || t.lieu;
+      let sub = '';
+      if (t.detail) sub += `<div class="small muted">${escapeHtmlWorker(t.lieu)}</div>`;
+      if (t.commune) sub += `<div class="small muted">Commune : ${escapeHtmlWorker(t.commune)}</div>`;
+      return `<tr data-id="${t.id}"><td>${dateFmt}</td><td><strong>${escapeHtmlWorker(title)}</strong>${sub}${badge}</td><td>${fmtKm(t.oneWay)}</td><td>${fmtKm(t.oneWay * 2)}</td><td><button type="button" class="btn outline km-row-del" data-id="${t.id}" title="Supprimer">✕</button></td></tr>`;
+    }).join('');
+    totalEl.textContent = fmtKm(total);
+    tripBody.querySelectorAll('.km-row-del').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        kmTrips = kmTrips.filter((t) => t.id !== btn.dataset.id);
+        saveDraft(kmTrips);
+        renderTripTable();
+      });
+    });
+  }
+
+  addBtn.addEventListener('click', () => {
+    let oneWay, mode;
+    const lieuLabel = lieuInput.value.trim();
+    if (!lieuLabel) return;
+    if (manualToggle.checked) {
+      oneWay = parseFloat(manualInput.value);
+      if (!(Number.isFinite(oneWay) && oneWay > 0)) return;
+      mode = 'manuel';
+    } else {
+      if (!selectedCommune) return;
+      oneWay = haversineKm(ORIGIN.lat, ORIGIN.lon, selectedCommune.lat, selectedCommune.lon);
+      mode = 'estime';
+    }
+    kmTrips.push({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      date: dateInput.value || today(),
+      lieu: lieuLabel,
+      commune: selectedCommune ? `${selectedCommune.name} (${selectedCommune.cp})` : null,
+      detail: detailInput.value.trim(),
+      oneWay,
+      mode,
+    });
+    saveDraft(kmTrips);
+
+    lieuInput.value = '';
+    detailInput.value = '';
+    selectedCommune = null;
+    currentResults = [];
+    suggestionsBox.classList.remove('open');
+    manualToggle.checked = false;
+    manualWrap.style.display = 'none';
+    manualInput.value = '';
+    renderPreview();
+    updateAddButton();
+    renderTripTable();
+    lieuInput.focus();
+  });
+
+  moisInput.addEventListener('change', () => { renderTripTable(); refreshSendStatus(); });
+
+  document.getElementById('km-clear-btn').addEventListener('click', () => {
+    const m = moisInput.value;
+    const list = tripsForMonth();
+    if (!list.length) return;
+    if (!confirm(`Supprimer les ${list.length} trajet(s) du mois affiché ?`)) return;
+    kmTrips = kmTrips.filter((t) => !(t.date && t.date.slice(0, 7) === m));
+    saveDraft(kmTrips);
+    renderTripTable();
+  });
+
+  function buildSheetTable(sheet) {
+    const rows = (sheet.trajets || []).slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    const body = rows.map((t) => {
+      const dateFmt = new Date(`${t.date}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const title = t.detail || t.lieu;
+      const sub = t.commune ? ` — ${t.commune}` : '';
+      return `<tr><td>${dateFmt}</td><td>${title}${sub}</td><td>${fmtKm(t.oneWay)}</td><td>${fmtKm(t.oneWay * 2)}</td></tr>`;
+    }).join('');
+    return `<table><thead><tr><th>Date</th><th>Lieu</th><th>Km aller</th><th>Km A/R</th></tr></thead><tbody>${body}</tbody><tfoot><tr><td colspan="3"><strong>Total</strong></td><td><strong>${fmtKm(sheet.total)}</strong></td></tr></tfoot></table>`;
+  }
+
+  function printSheet(sheet) {
+    const popup = window.open('', '_blank', 'width=900,height=700');
+    if (!popup) return;
+    popup.document.write(`
+      <html><head>
+        <title>Feuille kilométrique — ${sheet.username || CURRENT_USER} — ${sheet.mois}</title>
+        <style>
+          body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; padding:20px; color:#111;}
+          h1{margin:0 0 4px;} .muted{color:#666; margin-bottom:14px;}
+          table{width:100%;border-collapse:collapse;margin-top:6px}
+          th,td{border:1px solid #ccc;padding:6px;text-align:left;font-size:13px}
+          @media print {.noprint{display:none}}
+        </style>
+      </head><body>
+        <div class="noprint" style="text-align:right;margin-bottom:10px"><button onclick="window.print()">Imprimer</button></div>
+        <h1>Feuille kilométrique</h1>
+        <div class="muted">${sheet.username || CURRENT_USER} — ${sheet.mois} — départ 92 Route de Paris, 69260 Charbonnières-les-Bains</div>
+        ${buildSheetTable(sheet)}
+      </body></html>
+    `);
+    popup.document.close();
+  }
+
+  document.getElementById('km-print-btn').addEventListener('click', () => {
+    printSheet({ username: CURRENT_USER, mois: moisInput.value, trajets: tripsForMonth(), total: tripsForMonth().reduce((s, t) => s + t.oneWay * 2, 0) });
+  });
+
+  let ownSheetsCache = [];
+
+  async function refreshSendStatus() {
+    if (!sendStatusEl) return;
+    try {
+      const sheets = await apiFetch('/kilometrique');
+      ownSheetsCache = sheets;
+      const mine = sheets.find((s) => s.mois === moisInput.value);
+      if (!mine) { sendStatusEl.style.display = 'none'; return; }
+      sendStatusEl.style.display = '';
+      if (mine.statut === 'archivee') {
+        sendStatusEl.textContent = `Cette feuille a déjà été archivée par la compta le ${new Date(mine.archiveLe).toLocaleString('fr-FR')}. Renvoyez-la si vous ajoutez des trajets.`;
+      } else {
+        sendStatusEl.textContent = `Feuille envoyée à la compta le ${new Date(mine.envoyeLe).toLocaleString('fr-FR')}.`;
+      }
+      renderHistory();
+    } catch (error) {
+      sendStatusEl.style.display = 'none';
+    }
+  }
+
+  function moisLabel(mois) {
+    try {
+      const [y, m] = mois.split('-');
+      return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    } catch { return mois; }
+  }
+
+  function renderHistory() {
+    if (!ownSheetsCache.length) {
+      historyEmpty.style.display = '';
+      historyList.innerHTML = '';
+      return;
+    }
+    historyEmpty.style.display = 'none';
+    const sorted = ownSheetsCache.slice().sort((a, b) => (a.mois < b.mois ? 1 : -1));
+    historyList.innerHTML = sorted.map((s) => {
+      const badge = s.statut === 'archivee' ? '<span class="badge">archivée</span>' : '<span class="badge">envoyée</span>';
+      const when = s.statut === 'archivee' ? `Archivée le ${new Date(s.archiveLe).toLocaleString('fr-FR')}` : `Envoyée le ${new Date(s.envoyeLe).toLocaleString('fr-FR')}`;
+      return `<div class="km-row" data-mois="${s.mois}"><div class="km-row-main"><strong>${moisLabel(s.mois)}</strong>${badge}</div><div class="small muted">${(s.trajets || []).length} trajet(s) · ${fmtKm(s.total)} · ${when}</div><div class="actions left"><button type="button" class="btn outline km-history-print" data-mois="${s.mois}">Imprimer</button></div></div>`;
+    }).join('');
+    historyList.querySelectorAll('.km-history-print').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const sheet = ownSheetsCache.find((s) => s.mois === btn.dataset.mois);
+        if (sheet) printSheet(sheet);
+      });
+    });
+  }
+
+  sendBtn.addEventListener('click', async () => {
+    const list = tripsForMonth();
+    if (!list.length) {
+      alert('Aucun trajet à envoyer pour ce mois.');
+      return;
+    }
+    sendBtn.disabled = true;
+    try {
+      await apiFetch(`/kilometrique/${moisInput.value}`, { method: 'PUT', body: { trajets: list } });
+      await refreshSendStatus();
+    } catch (error) {
+      alert(error.message || "Échec de l'envoi.");
+    }
+    sendBtn.disabled = false;
+  });
+
+  communesReady.then(() => {
+    renderPreview();
+    updateAddButton();
+    renderTripTable();
+    refreshSendStatus();
+  });
+})();
