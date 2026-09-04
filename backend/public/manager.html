@@ -261,7 +261,12 @@
 
         <div class="grid-2">
           <div class="row"><label>Code postal</label><input name="devis.code_postal" type="text"></div>
-          <div class="row"><label>Ville</label><input name="devis.ville" type="text"></div>
+          <div class="row">
+  <label>Ville</label>
+  <select name="devis.ville">
+    <option value="">Choisir une ville</option>
+  </select>
+</div>
         </div>
         <div class="addr-actions">
           <button type="button" class="btn outline addr-open" data-addr="devis.adresse" data-cp="devis.code_postal" data-ville="devis.ville">📍 Maps</button>
@@ -276,7 +281,12 @@
           <div class="row"><label>Adresse chantier</label><input name="devis.adresse_chantier" type="text"></div>
           <div class="grid-2">
             <div class="row"><label>Code postal chantier</label><input name="devis.chantier_code_postal" type="text"></div>
-            <div class="row"><label>Ville chantier</label><input name="devis.chantier_ville" type="text"></div>
+            <div class="row">
+  <label>Ville chantier</label>
+  <select name="devis.chantier_ville">
+    <option value="">Choisir une ville</option>
+  </select>
+</div>
           </div>
           <div class="addr-actions">
             <button type="button" class="btn outline addr-open" data-addr="devis.adresse_chantier" data-cp="devis.chantier_code_postal" data-ville="devis.chantier_ville">📍 Maps</button>
