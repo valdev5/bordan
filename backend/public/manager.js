@@ -392,14 +392,19 @@ function belongsToChefDevis(devis) {
 
 function removeDevisByNum(num) {
   if (!num) {
-    return;
+    return Promise.resolve();
   }
 
-  const allDevis = Store.load(Store.KEY_DEVIS);
-  Store.save(
-    Store.KEY_DEVIS,
-    allDevis.filter((devis) => devis.num !== num),
-  );
+  const target = Store.load(Store.KEY_DEVIS).find((devis) => devis.num === num);
+  if (!target) {
+    return Promise.resolve();
+  }
+
+  // Passe par Store.deleteItem (tombstone) plutot que par une sauvegarde du
+  // tableau filtre : la synchro partagee fusionne desormais les sauvegardes
+  // par id sans jamais retirer d'element, donc une suppression doit toujours
+  // passer par cette route dediee pour etre propagee aux autres postes.
+  return Store.deleteItem(Store.KEY_DEVIS, target.id);
 }
 
 function displayPeopleChips(item) {
@@ -2372,7 +2377,7 @@ function autoCreateOrUpdateBonFromDevis(devis) {
   };
 
   Store.save(Store.KEY_BONS, Store.upsertByField(list, bon, 'num_devis', existing?.id));
-  removeDevisByNum(devis.num);
+  return removeDevisByNum(devis.num);
 }
 
 /* Devis */
@@ -2420,7 +2425,7 @@ $('#save-devis')?.addEventListener('click', async () => {
   Store.save(Store.KEY_DEVIS, Store.upsertByField(list, item, 'num', currentDevisId));
 
   if (item.signe === 'oui' && item.acompte === 'oui' && item.refuse !== 'oui') {
-    autoCreateOrUpdateBonFromDevis(item);
+    await autoCreateOrUpdateBonFromDevis(item);
   }
 
   currentDevisId = null;

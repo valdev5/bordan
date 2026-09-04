@@ -186,21 +186,31 @@ router.put('/:key', requireAuth, async (req, res) => {
   }
 
   try {
-    const previousValue = key === 'bons' ? await loadStateValue(STATE_KEYS.bons) : null;
+    const previousValue = await loadStateValue(STATE_KEYS[key]);
 
     // Empeche un client dont le cache local est perime de faire revivre un
-    // element supprime entre-temps par quelqu'un d'autre (ecrasement lors
-    // d'une sauvegarde globale du tableau).
+    // element supprime entre-temps par quelqu'un d'autre.
     const tombstoned = await getTombstonedIds(key);
-    const cleanedValue = tombstoned.size
-      ? value.filter((item) => !tombstoned.has(String(item.id)))
-      : value;
 
-    await saveStateValue(STATE_KEYS[key], cleanedValue);
-    audit(req.user.sub, 'UPSERT_SHARED_STATE', 'STATE', null, { key, count: cleanedValue.length });
+    // Fusionne par id au lieu d'ecraser toute la liste : un client dont le
+    // cache local est en retard (n'a pas encore vu un element ajoute par un
+    // autre poste) ne doit jamais pouvoir le faire disparaitre en sauvegardant
+    // sa propre vue partielle. La suppression passe exclusivement par
+    // DELETE /state/:key/:id, qui pose un tombstone.
+    const byId = new Map(previousValue.map((item) => [String(item?.id), item]));
+    value.forEach((item) => {
+      if (item?.id == null) return;
+      const id = String(item.id);
+      if (tombstoned.has(id)) return;
+      byId.set(id, item);
+    });
+    const mergedValue = Array.from(byId.values());
 
-    if (key === 'bons' && previousValue) {
-      notifyNewChatMessages(previousValue, cleanedValue).catch((err) => {
+    await saveStateValue(STATE_KEYS[key], mergedValue);
+    audit(req.user.sub, 'UPSERT_SHARED_STATE', 'STATE', null, { key, count: mergedValue.length });
+
+    if (key === 'bons') {
+      notifyNewChatMessages(previousValue, mergedValue).catch((err) => {
         console.warn('Push notification (chat) failed', err);
       });
     }
