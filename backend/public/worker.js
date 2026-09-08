@@ -472,7 +472,7 @@ function renderWork() {
         <div class="gallery" data-gallery></div>
         <div class="small muted" data-gallery-empty style="display:none">Aucune photo.</div>
         <div style="margin-top:6px">
-          <input type="file" accept="image/*" capture="environment" multiple class="photo-input" style="display:none">
+          <input type="file" accept="image/*" multiple class="photo-input" style="display:none">
           <button type="button" class="btn photo-add">Ajouter une photo</button>
         </div>
       </div>
