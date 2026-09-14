@@ -1311,6 +1311,85 @@ function findAssignmentConflicts(item, allBons) {
   return conflicts;
 }
 
+// Meteo sur le planning : Open-Meteo (gratuit, sans cle API, CORS ouvert)
+// centre sur Charbonnieres-les-Bains (meme origine que la feuille
+// kilometrique). Mise en cache 1 jour dans localStorage pour eviter de
+// refaire l'appel a chaque changement d'onglet/semaine.
+const WEATHER_ORIGIN = { lat: 45.777896, lon: 4.75131 };
+const WEATHER_CACHE_KEY = 'app:weather:cache';
+const WEATHER_ICONS = {
+  0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+  45: '🌫️', 48: '🌫️',
+  51: '🌦️', 53: '🌦️', 55: '🌦️', 56: '🌧️', 57: '🌧️',
+  61: '🌧️', 63: '🌧️', 65: '🌧️', 66: '🌧️', 67: '🌧️',
+  71: '❄️', 73: '❄️', 75: '❄️', 77: '❄️',
+  80: '🌦️', 81: '🌧️', 82: '🌧️',
+  85: '❄️', 86: '❄️',
+  95: '⛈️', 96: '⛈️', 99: '⛈️',
+};
+
+let weatherByDate = null;
+let weatherFetchPromise = null;
+
+function ensureWeatherLoaded() {
+  if (weatherFetchPromise) {
+    return weatherFetchPromise;
+  }
+
+  try {
+    const cached = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || 'null');
+    if (cached && cached.fetchedOn === today()) {
+      weatherByDate = cached.data;
+      weatherFetchPromise = Promise.resolve(weatherByDate);
+      return weatherFetchPromise;
+    }
+  } catch {
+    // cache illisible, on retente un fetch
+  }
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_ORIGIN.lat}&longitude=${WEATHER_ORIGIN.lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FParis`;
+
+  weatherFetchPromise = fetch(url)
+    .then((res) => res.json())
+    .then((json) => {
+      const map = {};
+      (json.daily?.time || []).forEach((date, i) => {
+        map[date] = {
+          code: json.daily.weathercode[i],
+          tmax: Math.round(json.daily.temperature_2m_max[i]),
+          tmin: Math.round(json.daily.temperature_2m_min[i]),
+          precip: json.daily.precipitation_probability_max[i],
+        };
+      });
+      weatherByDate = map;
+      try {
+        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ fetchedOn: today(), data: map }));
+      } catch {
+        // stockage plein ou indisponible : tant pis, pas bloquant
+      }
+      return map;
+    })
+    .catch((error) => {
+      console.warn('Meteo indisponible', error);
+      return null;
+    });
+
+  return weatherFetchPromise;
+}
+
+function renderWeatherForDay(iso) {
+  const wx = weatherByDate?.[iso];
+  if (!wx) {
+    return '';
+  }
+
+  const icon = WEATHER_ICONS[wx.code] || '';
+  const riskClass = wx.precip >= 60 ? ' risk' : wx.precip >= 30 ? ' warn' : '';
+  const precipText = wx.precip >= 30 ? ` · ${wx.precip}% pluie` : '';
+
+  return `<span class="wx${riskClass}">${icon} ${wx.tmax}° / ${wx.tmin}°${precipText}</span>`;
+}
+
 function renderPlanningManager() {
   const head = $('#planning-mgr-head');
   const body = $('#planning-mgr-body');
@@ -1332,8 +1411,18 @@ function renderPlanningManager() {
 
   head.innerHTML = `
     <th class="person-col">Intervenant</th>
-    ${days.map((d, i) => `<th>${dayLabels[i]} ${d.getDate()}</th>`).join('')}
+    ${days.map((d, i) => `
+      <th><div class="day-head"><span class="day-label">${dayLabels[i]} ${d.getDate()}</span>${renderWeatherForDay(planningIsoDate(d))}</div></th>
+    `).join('')}
   `;
+
+  if (!weatherByDate) {
+    ensureWeatherLoaded().then(() => {
+      if ($('#tab-planning')?.classList.contains('show')) {
+        renderPlanningManager();
+      }
+    });
+  }
 
   const allBons = Store.load(Store.KEY_BONS) || [];
   const people = PLANNING_ROSTER.filter(
