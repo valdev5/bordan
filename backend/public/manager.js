@@ -1839,6 +1839,47 @@ function openBon(item) {
   renderBoard();
 }
 
+// Cree (une seule fois) un enregistrement minimal pour un bon pas encore
+// sauvegarde, afin de pouvoir y attacher des photos avant le premier clic sur
+// "Enregistrer". Le vrai enregistrement (clic sur "Enregistrer") retrouvera
+// ce brouillon via currentBonId et le completera avec le reste du formulaire,
+// sans creer de doublon (cf. logique de Store.upsertByField).
+function ensureBonDraft() {
+  const list = Store.load(Store.KEY_BONS);
+
+  if (currentBonId) {
+    return list.find((bon) => bon.id === currentBonId) || null;
+  }
+
+  const raw = serializeNamedFields('bon');
+  if (!raw['bon.num_devis']) {
+    raw['bon.num_devis'] = makeDirectBTNum(list);
+    setFieldValue('bon.num_devis', raw['bon.num_devis']);
+  }
+
+  const draft = {
+    id: Date.now(),
+    type: 'bon',
+    num_devis: cleanText(raw['bon.num_devis']),
+    client: cleanText(raw['bon.client_nom']),
+    objet: cleanText(raw['bon.objet']),
+    pipe: 'b-pret',
+    status: 'bons',
+    team: [],
+    encadrants: [],
+    encadrant: '',
+    chat: [],
+    chatSeen: {},
+    photos: [],
+    raw,
+  };
+
+  Store.save(Store.KEY_BONS, [...list, draft]);
+  currentBonId = draft.id;
+  currentBonNum = draft.num_devis;
+  return draft;
+}
+
 function prepareNewBonForm() {
   currentBonId = null;
   currentBonNum = null;
@@ -1894,7 +1935,7 @@ function resetManagerChatAndGallery() {
     gallery.innerHTML = '';
   }
   if (galleryEmpty) {
-    galleryEmpty.textContent = 'Enregistrez le bon pour activer les photos.';
+    galleryEmpty.textContent = 'Aucune photo.';
     galleryEmpty.style.display = '';
   }
   if (photoInput) {
@@ -1902,8 +1943,19 @@ function resetManagerChatAndGallery() {
     photoInput.onchange = null;
   }
   if (photoAdd) {
-    photoAdd.onclick = null;
-    photoAdd.disabled = true;
+    // Le bon n'a pas encore d'id : le premier clic cree un brouillon a la
+    // volee (voir ensureBonDraft) pour pouvoir y attacher la photo tout de
+    // suite, sans obliger a cliquer sur "Enregistrer" avant.
+    photoAdd.disabled = false;
+    photoAdd.textContent = 'Ajouter des photos';
+    photoAdd.onclick = () => {
+      const draft = ensureBonDraft();
+      if (!draft) {
+        return;
+      }
+      initManagerGallery(draft);
+      photoInput?.click();
+    };
   }
 
   const signatureBox = $('#mgr-signature-box');
