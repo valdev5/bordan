@@ -174,8 +174,8 @@ async function notifyNewAssignments(previousValue, mergedValue, key, actingUsern
     notifications.push({
       recipients: addedNames,
       payload: {
-        title: 'Nouvelle affectation',
-        body: `${item.client || 'Client ?'} — ${label} ${num || ''}`.trim(),
+        title: `Nouvelle affectation — ${item.client || 'Client ?'}`,
+        body: [item.objet, num ? `${label} ${num}` : label].filter(Boolean).join(' · '),
         tag: `${key}-assign-${item.id}`,
       },
     });
