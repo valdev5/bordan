@@ -24,6 +24,17 @@ if (whoami) {
   whoami.textContent = `Connecte : ${CURRENT_USER || '-'}`;
 }
 
+// Petit compteur discret (coin de l'entete) : nombre total de connexions a
+// l'appli, tous comptes confondus - purement anecdotique.
+window.apiFetch?.('/audit/login-count')
+  .then((data) => {
+    const el = $('#login-counter');
+    if (el && Number.isFinite(data?.count)) {
+      el.textContent = `#${data.count}`;
+    }
+  })
+  .catch(() => {});
+
 $('#btn-logout')?.addEventListener('click', (event) => {
   event.preventDefault();
   Auth?.logout?.();

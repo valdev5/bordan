@@ -118,6 +118,16 @@ a:hover {
 }
 
 /* ===== Topbar ===== */
+.login-counter {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 10.5px;
+  color: var(--muted);
+  opacity: .6;
+  font-variant-numeric: tabular-nums;
+}
+
 .topbar {
   position: sticky;
   top: 0;

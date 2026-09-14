@@ -22,4 +22,14 @@ router.get('/', requireAuth, requireRole('manager'), (req, res) => {
   );
 });
 
+// GET /api/audit/login-count - n'importe quel compte connecte : nombre
+// total de connexions enregistrees (pour le petit compteur discret dans
+// l'entete, pas besoin d'etre manager pour ca).
+router.get('/login-count', requireAuth, (req, res) => {
+  db.get("SELECT COUNT(*) AS count FROM audit_log WHERE action = 'LOGIN'", [], (err, row) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    return res.json({ count: row?.count || 0 });
+  });
+});
+
 module.exports = router;
