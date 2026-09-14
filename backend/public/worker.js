@@ -1183,7 +1183,7 @@ setInterval(() => {
     .catch((error) => {
       console.warn('Impossible d actualiser les bons partages', error);
     });
-}, 6000);
+}, 2000);
 
 /*************************************************
  * Feuille kilometrique

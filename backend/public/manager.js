@@ -3281,4 +3281,4 @@ setInterval(() => {
     .catch((error) => {
       console.warn('Impossible d actualiser les donnees partagees', error);
     });
-}, 5000);
+}, 2000);
