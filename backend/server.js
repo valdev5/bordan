@@ -5,11 +5,12 @@ const cors = require("cors");
 const path = require("path");
 
 const { initDb } = require("./src/db/init");
-const { db } = require("./src/db/conn");
+const { startDailyBackup } = require("./src/backup");
 const authRoutes = require("./src/routes/auth");
 const bonRoutes = require("./src/routes/bons");
 const auditRoutes = require("./src/routes/audit");
 const stateRoutes = require("./src/routes/state");
+const trashRoutes = require("./src/routes/trash");
 const pushRoutes = require("./src/routes/push");
 const calendarTokenRoutes = require("./src/routes/calendarToken");
 const calendarFeedRoutes = require("./src/routes/calendarFeed");
@@ -20,14 +21,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 3001);
 
 initDb();
-
-// FIX TEMPORAIRE (disque Render non persistant) : Karine est compta mais a
-// aussi ete promue "manager" pour acceder a l'espace manager. Comme la base
-// repart de son etat commit a chaque redemarrage/deploiement/reveil du
-// service, ce role est perdu a chaque fois -> on le republie systematiquement
-// au demarrage. A retirer si la base devient persistante (disque payant
-// Render) ou si Karine change de role autrement via l'appli.
-db.run("UPDATE users SET role = 'manager' WHERE username = 'Karine'");
+startDailyBackup();
 
 // CORS DEV: autorise 127.0.0.1 + localhost sur ports courants + variables d'env
 const allowedOrigins = new Set([
@@ -63,6 +57,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/bons", bonRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/state", stateRoutes);
+app.use("/api/trash", trashRoutes);
 app.use("/api/push", pushRoutes);
 app.use("/api/calendar", calendarTokenRoutes);
 app.use("/calendar", calendarFeedRoutes);

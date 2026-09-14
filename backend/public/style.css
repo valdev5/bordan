@@ -810,6 +810,71 @@ textarea {
   box-shadow: var(--shadow);
 }
 
+/* ===== Corbeille ===== */
+.trash-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 10, .72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.trash-sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.trash-sheet h4 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trash-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trash-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--panel);
+}
+
+.trash-row .info {
+  font-size: 13px;
+  min-width: 0;
+}
+
+.trash-row .info .name {
+  font-weight: 700;
+}
+
+.trash-row .info .meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* ===== Signature client fin de chantier ===== */
 .sig-overlay {
   position: fixed;

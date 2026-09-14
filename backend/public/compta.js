@@ -1049,14 +1049,14 @@ Store.syncFromServer?.()
     renderAll();
   });
 
+// Le rendu periodique se fait via l'evenement 'shared-store-changed'
+// (declenche par Store.syncFromServer uniquement si les donnees ont
+// reellement change - voir app-common.js) : pas besoin de redessiner ici a
+// chaque tick.
 setInterval(() => {
-  Store.syncFromServer?.()
-    .then(() => {
-      renderAll();
-    })
-    .catch((error) => {
-      console.warn('Impossible d actualiser les bons partages', error);
-    });
+  Store.syncFromServer?.().catch((error) => {
+    console.warn('Impossible d actualiser les bons partages', error);
+  });
   }, 2000);
 
 /*************************************************

@@ -67,6 +67,17 @@ function initDb() {
     `);
 
     db.run(`
+      CREATE TABLE IF NOT EXISTS trash (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        item_json TEXT NOT NULL,
+        deleted_by TEXT,
+        deleted_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+
+    db.run(`
       CREATE TABLE IF NOT EXISTS km_sheets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,

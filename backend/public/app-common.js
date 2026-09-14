@@ -20,6 +20,12 @@ const Store = (() => {
   );
   const pendingTimers = new Map();
   let syncPromise = null;
+  // Derniere reponse serveur vue, pour detecter un vrai changement d'une
+  // synchro a l'autre. Comparer au contenu de localStorage ne marche pas :
+  // le rendu du tableau y ecrit des champs calcules (ex. "pipeline") jamais
+  // renvoyes au serveur, donc local et serveur different en permanence meme
+  // quand rien n'a reellement change.
+  const lastServerJson = { [KEY_DEVIS]: null, [KEY_BONS]: null };
 
   const markDirty = (key) => {
     dirtyKeys.add(key);
@@ -147,6 +153,15 @@ const Store = (() => {
       const data = await apiFetch('/state');
       const serverDevis = Array.isArray(data.devis) ? data.devis : [];
       const serverBons = Array.isArray(data.bons) ? data.bons : [];
+      let changed = false;
+
+      const nextDevisJson = JSON.stringify(serverDevis);
+      const devisServerChanged = nextDevisJson !== lastServerJson[KEY_DEVIS];
+      lastServerJson[KEY_DEVIS] = nextDevisJson;
+
+      const nextBonsJson = JSON.stringify(serverBons);
+      const bonsServerChanged = nextBonsJson !== lastServerJson[KEY_BONS];
+      lastServerJson[KEY_BONS] = nextBonsJson;
 
       // Une modification locale pas encore confirmee cote serveur (push
       // jamais parti, ou echoue - reseau mobile instable, etc.) reste
@@ -156,17 +171,26 @@ const Store = (() => {
       // l'envoi a chaque synchro, jusqu'a ce qu'il aboutisse.
       if (dirtyKeys.has(KEY_DEVIS)) {
         await pushKey(KEY_DEVIS);
-      } else {
+      } else if (devisServerChanged) {
         writeLocal(KEY_DEVIS, serverDevis);
+        changed = true;
       }
 
       if (dirtyKeys.has(KEY_BONS)) {
         await pushKey(KEY_BONS);
-      } else {
+      } else if (bonsServerChanged) {
         writeLocal(KEY_BONS, serverBons);
+        changed = true;
       }
 
-      emitChange();
+      // Ne prevenir (et donc redessiner) que si quelque chose a reellement
+      // change : sinon, une synchro toutes les 2s finissait par reconstruire
+      // tout le tableau (toutes les cartes) meme quand rien n'avait bouge,
+      // au point qu'un bouton pouvait disparaitre sous le doigt pile au
+      // moment d'un clic/tap.
+      if (changed) {
+        emitChange();
+      }
 
       return {
         devis: load(KEY_DEVIS),

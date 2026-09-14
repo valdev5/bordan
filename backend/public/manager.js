@@ -75,6 +75,89 @@ $('#btn-change-user-role')?.addEventListener('click', async () => {
   }
 });
 
+function formatTrashDate(value) {
+  if (!value) {
+    return '';
+  }
+  const parsed = new Date(String(value).replace(' ', 'T') + 'Z');
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString('fr-FR');
+}
+
+function openTrashModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'trash-overlay';
+  overlay.innerHTML = `
+    <div class="trash-sheet">
+      <h4>🗑️ Corbeille <button type="button" class="btn outline" data-close>Fermer</button></h4>
+      <div class="small muted" style="margin-bottom:10px">Devis et bons supprimes recemment (14 jours). Une restauration les remet dans le tableau.</div>
+      <div class="trash-list"><div class="small muted">Chargement...</div></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay || event.target.closest('[data-close]')) {
+      overlay.remove();
+    }
+  });
+
+  const listEl = overlay.querySelector('.trash-list');
+
+  async function load() {
+    try {
+      const items = await window.apiFetch('/trash');
+      if (!items.length) {
+        listEl.innerHTML = '<div class="small muted">Corbeille vide.</div>';
+        return;
+      }
+
+      listEl.innerHTML = items
+        .map(
+          (item) => `
+            <div class="trash-row" data-id="${item.id}">
+              <div class="info">
+                <div class="name">${escapeHtml(item.client || 'Client ?')}</div>
+                <div class="meta">${item.kind === 'devis' ? 'Devis' : 'Bon'} ${escapeHtml(item.num || '')} · supprime par ${escapeHtml(item.deletedBy || '?')} le ${formatTrashDate(item.deletedAt)}</div>
+              </div>
+              <button type="button" class="btn primary restore-btn">Restaurer</button>
+            </div>
+          `,
+        )
+        .join('');
+
+      listEl.querySelectorAll('.restore-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const row = btn.closest('.trash-row');
+          const id = row?.dataset.id;
+          if (!id) return;
+
+          btn.disabled = true;
+          btn.textContent = 'Restauration...';
+          try {
+            await window.apiFetch(`/trash/${id}/restore`, { method: 'POST' });
+            await Store.syncFromServer?.();
+            renderBoard();
+            row.remove();
+            if (!listEl.querySelector('.trash-row')) {
+              listEl.innerHTML = '<div class="small muted">Corbeille vide.</div>';
+            }
+          } catch (error) {
+            alert(error.message || 'Impossible de restaurer cet element.');
+            btn.disabled = false;
+            btn.textContent = 'Restaurer';
+          }
+        });
+      });
+    } catch (error) {
+      listEl.innerHTML = '<div class="small muted">Impossible de charger la corbeille.</div>';
+    }
+  }
+
+  load();
+}
+
+$('#btn-corbeille')?.addEventListener('click', openTrashModal);
+
 const whoShort = $('#whoami-short');
 if (whoShort) {
   whoShort.textContent = CURRENT_USER || '-';
@@ -3268,17 +3351,13 @@ Store.syncFromServer?.()
     renderBoard();
   });
 
+// Le rendu periodique se fait via l'evenement 'shared-store-changed'
+// (declenche par Store.syncFromServer uniquement si les donnees ont
+// reellement change - voir app-common.js) : pas besoin de redessiner ici a
+// chaque tick, ce qui evite de recreer toutes les cartes toutes les 2s pour
+// rien (bouton qui "disparait" sous le doigt au moment d'un clic/tap).
 setInterval(() => {
-  Store.syncFromServer?.()
-    .then(() => {
-      if ($('#tab-board')?.classList.contains('show') && !boardHasFocusedControl()) {
-        renderBoard();
-      }
-      if ($('#tab-dashboard')?.classList.contains('show')) {
-        renderDashboard();
-      }
-    })
-    .catch((error) => {
-      console.warn('Impossible d actualiser les donnees partagees', error);
-    });
+  Store.syncFromServer?.().catch((error) => {
+    console.warn('Impossible d actualiser les donnees partagees', error);
+  });
 }, 2000);

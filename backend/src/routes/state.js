@@ -2,7 +2,7 @@ const express = require('express');
 
 const { db } = require('../db/conn');
 const { requireAuth } = require('../middleware/auth');
-const { audit } = require('./helpers');
+const { audit, loadStateValue, saveStateValue } = require('./helpers');
 const { sendPushToUsernames } = require('../push');
 
 const router = express.Router();
@@ -11,52 +11,6 @@ const STATE_KEYS = {
   devis: 'devis',
   bons: 'bons',
 };
-
-function loadStateValue(key) {
-  return new Promise((resolve, reject) => {
-    db.get('SELECT value_json FROM shared_state WHERE key = ?', [key], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      if (!row?.value_json) {
-        resolve([]);
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(row.value_json);
-        resolve(Array.isArray(parsed) ? parsed : []);
-      } catch {
-        resolve([]);
-      }
-    });
-  });
-}
-
-function saveStateValue(key, value) {
-  return new Promise((resolve, reject) => {
-    db.run(
-      `
-        INSERT INTO shared_state (key, value_json, updated_at)
-        VALUES (?, ?, datetime('now'))
-        ON CONFLICT(key) DO UPDATE SET
-          value_json = excluded.value_json,
-          updated_at = datetime('now')
-      `,
-      [key, JSON.stringify(value)],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve();
-      },
-    );
-  });
-}
 
 function getTombstonedIds(kind) {
   return new Promise((resolve, reject) => {
@@ -75,6 +29,25 @@ function addTombstone(kind, itemId) {
     db.run(
       'INSERT OR IGNORE INTO deleted_ids (kind, item_id) VALUES (?, ?)',
       [kind, String(itemId)],
+      (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      },
+    );
+  });
+}
+
+// Garde une copie complete de l'element supprime (corbeille) : sans ca, une
+// fois le tombstone pose et l'element retire de shared_state, sa donnee est
+// perdue pour de bon des que tous les postes ont synchronise.
+function addToTrash(kind, itemId, item, deletedBy) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO trash (kind, item_id, item_json, deleted_by) VALUES (?, ?, ?, ?)',
+      [kind, String(itemId), JSON.stringify(item), deletedBy || null],
       (err) => {
         if (err) {
           reject(err);
@@ -236,8 +209,12 @@ router.delete('/:key/:id', requireAuth, async (req, res) => {
 
   try {
     const current = await loadStateValue(STATE_KEYS[key]);
+    const removed = current.find((item) => String(item.id) === id);
     const next = current.filter((item) => String(item.id) !== id);
 
+    if (removed) {
+      await addToTrash(key, id, removed, req.user.username);
+    }
     await addTombstone(key, id);
     await saveStateValue(STATE_KEYS[key], next);
     audit(req.user.sub, 'DELETE_SHARED_STATE_ITEM', 'STATE', null, { key, id });
