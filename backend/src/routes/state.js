@@ -147,6 +147,63 @@ async function notifyNewChatMessages(oldBons, newBons) {
   );
 }
 
+function getAssignedNames(item, key) {
+  const names = key === 'devis'
+    ? (item.encadrants || [])
+    : [...(item.team || []), ...(item.encadrants || [])];
+  return new Set(names.filter(Boolean));
+}
+
+// Previent un intervenant/encadrant des qu'il est nouvellement affecte a un
+// devis ou un bon (comparaison avec l'etat precedent, item par item) - pas
+// de spam si l'affectation etait deja la avant cette sauvegarde.
+async function notifyNewAssignments(previousValue, mergedValue, key, actingUsername) {
+  const notifications = [];
+  const oldById = new Map(previousValue.map((item) => [String(item.id), item]));
+
+  for (const item of mergedValue) {
+    const oldItem = oldById.get(String(item.id));
+    const oldNames = oldItem ? getAssignedNames(oldItem, key) : new Set();
+    const newNames = getAssignedNames(item, key);
+
+    const addedNames = [...newNames].filter((name) => name !== actingUsername && !oldNames.has(name));
+    if (!addedNames.length) continue;
+
+    const label = key === 'devis' ? 'Devis' : 'Bon de travail';
+    const num = key === 'devis' ? item.num : item.num_devis;
+    notifications.push({
+      recipients: addedNames,
+      payload: {
+        title: 'Nouvelle affectation',
+        body: `${item.client || 'Client ?'} — ${label} ${num || ''}`.trim(),
+        tag: `${key}-assign-${item.id}`,
+      },
+    });
+  }
+
+  if (!notifications.length) return;
+
+  const allRecipients = [...new Set(notifications.flatMap((n) => n.recipients))];
+  const roles = await getRolesForUsernames(allRecipients);
+
+  await Promise.all(
+    notifications.map(({ recipients, payload }) => {
+      const byPage = new Map();
+      recipients.forEach((name) => {
+        const page = ROLE_LANDING_PAGE[roles[name]] || '/';
+        if (!byPage.has(page)) byPage.set(page, []);
+        byPage.get(page).push(name);
+      });
+
+      return Promise.all(
+        [...byPage.entries()].map(([url, names]) =>
+          sendPushToUsernames(names, { ...payload, url }).catch(() => {}),
+        ),
+      );
+    }),
+  );
+}
+
 router.put('/:key', requireAuth, async (req, res) => {
   const key = String(req.params.key || '').trim();
   if (!Object.prototype.hasOwnProperty.call(STATE_KEYS, key)) {
@@ -187,6 +244,10 @@ router.put('/:key', requireAuth, async (req, res) => {
         console.warn('Push notification (chat) failed', err);
       });
     }
+
+    notifyNewAssignments(previousValue, mergedValue, key, req.user.username).catch((err) => {
+      console.warn('Push notification (affectation) failed', err);
+    });
 
     return res.json({ ok: true });
   } catch (err) {
