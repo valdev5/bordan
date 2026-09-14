@@ -7,9 +7,29 @@ const Store = (() => {
     [KEY_BONS]: 'bons',
   };
 
-  const dirtyKeys = new Set();
+  const PENDING_PREFIX = 'app:pending:';
+
+  // Une modification locale reste "dirty" (a renvoyer au serveur) meme si
+  // l'onglet est ferme avant que la synchro n'ait pu partir ou aboutir : sans
+  // ca, un simple rechargement de page (frequent sur mobile / reseau instable)
+  // faisait perdre la marque "dirty" en memoire, et la synchro suivante
+  // ecrasait silencieusement la modification jamais envoyee avec la version
+  // (plus ancienne) du serveur.
+  const dirtyKeys = new Set(
+    [KEY_DEVIS, KEY_BONS].filter((key) => localStorage.getItem(PENDING_PREFIX + key) === '1'),
+  );
   const pendingTimers = new Map();
   let syncPromise = null;
+
+  const markDirty = (key) => {
+    dirtyKeys.add(key);
+    try { localStorage.setItem(PENDING_PREFIX + key, '1'); } catch {}
+  };
+
+  const clearDirty = (key) => {
+    dirtyKeys.delete(key);
+    try { localStorage.removeItem(PENDING_PREFIX + key); } catch {}
+  };
 
   const load = (key) => {
     try {
@@ -47,8 +67,13 @@ const Store = (() => {
     const serverKey = SERVER_KEYS[key];
     const hasToken = !!localStorage.getItem('token');
 
-    if (!serverKey || !window.apiFetch || !hasToken) {
-      dirtyKeys.delete(key);
+    if (!serverKey || !window.apiFetch) {
+      clearDirty(key);
+      return false;
+    }
+    if (!hasToken) {
+      // Pas connecte pour l'instant : on garde la marque "dirty" pour
+      // reessayer des qu'un token sera disponible (login, ou tab relance).
       return false;
     }
 
@@ -57,7 +82,7 @@ const Store = (() => {
       body: { value: load(key) },
     });
 
-    dirtyKeys.delete(key);
+    clearDirty(key);
     emitChange();
     return true;
   }
@@ -97,7 +122,7 @@ const Store = (() => {
     writeLocal(key, value);
 
     if (!options.skipRemote) {
-      dirtyKeys.add(key);
+      markDirty(key);
       schedulePush(key);
       emitChange();
     }
@@ -120,27 +145,25 @@ const Store = (() => {
 
     syncPromise = (async () => {
       const data = await apiFetch('/state');
-      const localDevis = load(KEY_DEVIS);
-      const localBons = load(KEY_BONS);
       const serverDevis = Array.isArray(data.devis) ? data.devis : [];
       const serverBons = Array.isArray(data.bons) ? data.bons : [];
 
-      if (!dirtyKeys.has(KEY_DEVIS)) {
-        if (!serverDevis.length && localDevis.length) {
-          dirtyKeys.add(KEY_DEVIS);
-          await pushKey(KEY_DEVIS);
-        } else {
-          writeLocal(KEY_DEVIS, serverDevis);
-        }
+      // Une modification locale pas encore confirmee cote serveur (push
+      // jamais parti, ou echoue - reseau mobile instable, etc.) reste
+      // "dirty" y compris apres un rechargement de page. Tant que ce n'est
+      // pas confirme, on ne remplace jamais le cache local par la version
+      // serveur (on perdrait la modif en attente) ; a la place on retente
+      // l'envoi a chaque synchro, jusqu'a ce qu'il aboutisse.
+      if (dirtyKeys.has(KEY_DEVIS)) {
+        await pushKey(KEY_DEVIS);
+      } else {
+        writeLocal(KEY_DEVIS, serverDevis);
       }
 
-      if (!dirtyKeys.has(KEY_BONS)) {
-        if (!serverBons.length && localBons.length) {
-          dirtyKeys.add(KEY_BONS);
-          await pushKey(KEY_BONS);
-        } else {
-          writeLocal(KEY_BONS, serverBons);
-        }
+      if (dirtyKeys.has(KEY_BONS)) {
+        await pushKey(KEY_BONS);
+      } else {
+        writeLocal(KEY_BONS, serverBons);
       }
 
       emitChange();
@@ -188,6 +211,13 @@ const Store = (() => {
 })();
 
 window.Store = Store;
+
+// Des qu'une connexion reseau revient (typique en mobilite, reseau
+// instable), on retente aussitot l'envoi des modifications en attente
+// plutot que d'attendre la prochaine synchro periodique.
+window.addEventListener('online', () => {
+  Store.flush?.().catch(() => {});
+});
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
