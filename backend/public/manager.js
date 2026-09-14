@@ -515,9 +515,61 @@ function syncDevisRawFlags(devis) {
     'devis.signe': devis.signe || 'non',
     'devis.acompte': devis.acompte || 'non',
     'devis.refuse': devis.refuse || 'non',
+    'devis.refuse_motif': devis.refuseMotif || '',
+    'devis.refuse_note': devis.refuseNote || '',
   };
 
   return devis;
+}
+
+const DEVIS_REFUSE_MOTIFS = [
+  'Prix trop élevé',
+  'Concurrent choisi',
+  'Projet annulé',
+  'Délai trop long',
+  'Sans réponse du client',
+  'Autre',
+];
+
+// Ouvre une petite fenetre pour choisir le motif de refus (facultatif) quand
+// un devis passe a l'etape "Refuse" directement depuis la carte du tableau
+// (le formulaire complet propose deja ce choix inline). Annuler laisse le
+// devis refuse sans motif renseigne.
+function openRefuseReasonModal(devis, onDone) {
+  const overlay = document.createElement('div');
+  overlay.className = 'trash-overlay';
+  overlay.innerHTML = `
+    <div class="trash-sheet" style="max-width:380px">
+      <h4>Motif du refus <button type="button" class="btn outline" data-close>Passer</button></h4>
+      <div class="row"><label>Motif</label>
+        <select class="refuse-motif-select">
+          <option value="">Choisir un motif</option>
+          ${DEVIS_REFUSE_MOTIFS.map((motif) => `<option${motif === devis.refuseMotif ? ' selected' : ''}>${escapeHtml(motif)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="row"><label>Note (facultatif)</label><textarea class="refuse-note-input" rows="2" placeholder="Ex. le client a trouve moins cher ailleurs">${escapeHtml(devis.refuseNote || '')}</textarea></div>
+      <div class="actions" style="margin-top:10px"><button type="button" class="btn primary" data-save>Enregistrer le motif</button></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  function close() {
+    overlay.remove();
+    onDone?.();
+  }
+
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay || event.target.closest('[data-close]')) {
+      close();
+    }
+  });
+
+  overlay.querySelector('[data-save]').addEventListener('click', () => {
+    devis.refuseMotif = overlay.querySelector('.refuse-motif-select').value;
+    devis.refuseNote = cleanText(overlay.querySelector('.refuse-note-input').value);
+    syncDevisRawFlags(devis);
+    close();
+  });
 }
 
 function formatPrintDate(value) {
@@ -538,6 +590,7 @@ const DEVIS_PIPELINE_LABELS = {
   'd-attente-retour': 'Saisi / attente retour',
   'd-accepte': 'Accepté',
   'd-refuse': 'Refusé',
+  'd-archive': 'Archivé',
 };
 
 const BON_PIPELINE_LABELS = {
@@ -565,7 +618,7 @@ function getClientHistory(clientName, excludeType, excludeId) {
         label: `${devis.num || '-'} — ${devis.objet || 'Devis'}`,
         date: raw['devis.date_demande'] || '',
         status: DEVIS_PIPELINE_LABELS[pipeline] || pipeline,
-        done: pipeline === 'd-accepte' || pipeline === 'd-refuse',
+        done: pipeline === 'd-accepte' || pipeline === 'd-refuse' || pipeline === 'd-archive',
         tel: raw['devis.tel'] || '',
         adresse: raw['devis.adresse'] || '',
         codePostal: raw['devis.code_postal'] || '',
@@ -1886,6 +1939,11 @@ function openDevis(item) {
     blocChantier.style.display = item.raw?.['devis.adresse_chantier_diff'] === 'oui' ? '' : 'none';
   }
 
+  const refuseBloc = $('#d-refuse-bloc');
+  if (refuseBloc) {
+    refuseBloc.style.display = item.refuse === 'oui' ? '' : 'none';
+  }
+
   currentDevisId = item.id;
   initDevisGallery(item);
   showTab('devis');
@@ -2533,6 +2591,14 @@ $('#save-devis')?.addEventListener('click', async () => {
     signe: raw['devis.signe'] || 'non',
     acompte: raw['devis.acompte'] || 'non',
     refuse: raw['devis.refuse'] || 'non',
+    refuseMotif: raw['devis.refuse'] === 'oui' ? (raw['devis.refuse_motif'] || '') : '',
+    refuseNote: raw['devis.refuse'] === 'oui' ? cleanText(raw['devis.refuse_note'] || '') : '',
+    // Horodatage du refus, pour l'archivage automatique (voir getDevisPipeline)
+    // - fixe une seule fois au moment ou le refus est coche, jamais reinitialise
+    // par les enregistrements suivants tant que le devis reste refuse.
+    refusedAt: raw['devis.refuse'] === 'oui'
+      ? (current?.refuse === 'oui' ? (current.refusedAt || Date.now()) : Date.now())
+      : null,
     urgence: raw['devis.urgence'] || 'normal',
     admin,
     encadrants,
@@ -2770,6 +2836,7 @@ function getBoardColumns() {
     'd-attente-retour': $('#d-attente-retour'),
     'd-accepte': $('#d-accepte'),
     'd-refuse': $('#d-refuse'),
+    'd-archive': $('#d-archive'),
     'b-pret': $('#b-pret'),
     'b-affect': $('#b-affect'),
     'b-encours': $('#b-encours'),
@@ -2803,7 +2870,18 @@ document.addEventListener('click', (event) => {
   head.closest('.col')?.classList.toggle('expanded');
 });
 
+// Un devis refuse depuis plus de 60 jours se range tout seul dans
+// "Archives" pour desencombrer le tableau (toujours consultable via la
+// recherche) - prioritaire sur le pipeline stocke, quelle que soit la facon
+// dont le refus a ete enregistre (case a cocher du formulaire ou etape
+// choisie directement sur la carte).
+const DEVIS_ARCHIVE_AFTER_MS = 60 * 24 * 60 * 60 * 1000;
+
 function getDevisPipeline(devis) {
+  if (devis.refuse === 'oui' && devis.refusedAt && Date.now() - devis.refusedAt > DEVIS_ARCHIVE_AFTER_MS) {
+    return 'd-archive';
+  }
+
   if (devis.pipeline) {
     return devis.pipeline;
   }
@@ -2998,6 +3076,38 @@ function renderDashboard() {
       </div>
     `;
   }
+
+  // Motifs de refus (30 derniers jours), pour voir d'un coup d'oeil si on
+  // perd des devis surtout sur le prix, la concurrence, etc.
+  const refuseWindowStart = now - 30 * 86400000;
+  const refuseCounts = new Map();
+  devisList
+    .filter((devis) => devis.refuse === 'oui' && (!devis.refusedAt || devis.refusedAt >= refuseWindowStart))
+    .forEach((devis) => {
+      const motif = devis.refuseMotif || 'Motif non renseigné';
+      refuseCounts.set(motif, (refuseCounts.get(motif) || 0) + 1);
+    });
+
+  const refuseBarsEl = $('#dash-refuse-bars');
+  const refuseEmptyEl = $('#dash-refuse-empty');
+  if (refuseBarsEl) {
+    const entries = [...refuseCounts.entries()].sort((a, b) => b[1] - a[1]);
+    if (refuseEmptyEl) {
+      refuseEmptyEl.style.display = entries.length ? 'none' : '';
+    }
+    const maxRefuse = Math.max(1, ...entries.map(([, count]) => count));
+    refuseBarsEl.innerHTML = entries
+      .map(
+        ([motif, count]) => `
+          <div class="bar-row">
+            <div class="bar-label">${escapeHtml(motif)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(count / maxRefuse) * 100}%; background:var(--danger)"></div></div>
+            <div class="bar-value">${count}</div>
+          </div>
+        `,
+      )
+      .join('');
+  }
 }
 
 function renderBoard() {
@@ -3059,6 +3169,7 @@ function renderBoard() {
       ${urgenceBadge}
       ${displayPeopleChips(devis)}
       <div class="small" style="margin:4px 0">${escapeHtml(devis.objet || '')}</div>
+      ${devis.refuse === 'oui' ? `<div class="refuse-tag">✕ Refusé${devis.refuseMotif ? ` — ${escapeHtml(devis.refuseMotif)}` : ''}</div>` : ''}
       <div class="row" style="margin-top:8px">
         <label>Etape</label>
         <select class="pipe">
@@ -3068,6 +3179,7 @@ function renderBoard() {
           <option value="d-attente-retour">Saisi / attente retour</option>
           <option value="d-accepte">Accepte</option>
           <option value="d-refuse">Refuse</option>
+          <option value="d-archive">Archive</option>
         </select>
       </div>
       <div class="grid-3 small" style="margin-top:6px">
@@ -3084,7 +3196,22 @@ function renderBoard() {
     const pipeSelect = card.querySelector('.pipe');
     pipeSelect.value = devis.pipeline;
     pipeSelect.onchange = () => {
-      devis.pipeline = pipeSelect.value;
+      const nextPipeline = pipeSelect.value;
+      const wasRefused = devis.refuse === 'oui';
+
+      if (nextPipeline === 'd-refuse' && !wasRefused) {
+        devis.refuse = 'oui';
+        devis.refusedAt = devis.refusedAt || Date.now();
+        syncDevisRawFlags(devis);
+      } else if (nextPipeline !== 'd-refuse' && nextPipeline !== 'd-archive' && wasRefused) {
+        devis.refuse = 'non';
+        devis.refuseMotif = '';
+        devis.refuseNote = '';
+        devis.refusedAt = null;
+        syncDevisRawFlags(devis);
+      }
+
+      devis.pipeline = nextPipeline;
       const updated = devisList.map((entry) => (entry.id === devis.id ? devis : entry));
       Store.save(Store.KEY_DEVIS, updated);
 
@@ -3093,6 +3220,18 @@ function renderBoard() {
       }
 
       renderBoard();
+
+      if (nextPipeline === 'd-refuse' && !wasRefused) {
+        openRefuseReasonModal(devis, () => {
+          const list = Store.load(Store.KEY_DEVIS);
+          const idx = list.findIndex((entry) => entry.id === devis.id);
+          if (idx > -1) {
+            list[idx] = devis;
+            Store.save(Store.KEY_DEVIS, list);
+          }
+          renderBoard();
+        });
+      }
     };
 
     card.querySelector('.chk-signe').onchange = (event) => {

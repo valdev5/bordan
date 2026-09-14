@@ -79,6 +79,7 @@
         <div class="col"><div class="col-head"><span class="col-head-label">Devis – Saisi / attente retour</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-attente-retour" class="col-body"></div></div>
         <div class="col"><div class="col-head"><span class="col-head-label">Devis – Accepté</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-accepte" class="col-body"></div></div>
         <div class="col"><div class="col-head"><span class="col-head-label">Devis – Refusé</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-refuse" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">Devis – Archivés</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-archive" class="col-body"></div></div>
       </div>
 
       <div class="board board--6">
@@ -157,6 +158,13 @@
           <h2>Répartition par site</h2>
           <div class="sub">Bons actifs, équipe affectée</div>
           <div id="dash-site-bars"></div>
+        </div>
+
+        <div class="section">
+          <h2>Motifs de refus</h2>
+          <div class="sub">Devis refusés, 30 derniers jours</div>
+          <div id="dash-refuse-empty" class="small muted" style="display:none">Aucun devis refusé sur la période.</div>
+          <div id="dash-refuse-bars"></div>
         </div>
       </div>
     </section>
@@ -330,7 +338,21 @@
           <div class="grid-3">
             <label><input type="checkbox" name="devis.signe"> Devis signé</label>
             <label><input type="checkbox" name="devis.acompte"> Acompte reçu</label>
-            <label><input type="checkbox" name="devis.refuse"> Refusé</label>
+            <label><input type="checkbox" name="devis.refuse" id="d-refuse-cb"> Refusé</label>
+          </div>
+          <div id="d-refuse-bloc" style="display:none">
+            <div class="row"><label>Motif du refus</label>
+              <select name="devis.refuse_motif">
+                <option value="">Choisir un motif</option>
+                <option>Prix trop élevé</option>
+                <option>Concurrent choisi</option>
+                <option>Projet annulé</option>
+                <option>Délai trop long</option>
+                <option>Sans réponse du client</option>
+                <option>Autre</option>
+              </select>
+            </div>
+            <div class="row"><label>Note (facultatif)</label><textarea name="devis.refuse_note" rows="2" placeholder="Ex. le client a trouvé moins cher ailleurs"></textarea></div>
           </div>
           <div class="row"><label>Envoyer à la compta</label>
             <select id="devis-admin">
@@ -733,6 +755,11 @@
       const bloc3 = document.getElementById('dir-bloc-chantier');
       function sync3(){ if(cb3 && bloc3) bloc3.style.display = cb3.checked ? '' : 'none'; }
       cb3 && (cb3.onchange = sync3, sync3());
+
+      const cb4 = document.getElementById('d-refuse-cb');
+      const bloc4 = document.getElementById('d-refuse-bloc');
+      function sync4(){ if(cb4 && bloc4) bloc4.style.display = cb4.checked ? '' : 'none'; }
+      cb4 && (cb4.onchange = sync4, sync4());
     })();
   </script>
 

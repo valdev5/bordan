@@ -810,6 +810,19 @@ textarea {
   box-shadow: var(--shadow);
 }
 
+.refuse-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, .14);
+  color: var(--danger);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin: 2px 0 6px;
+}
+
 /* ===== Corbeille ===== */
 .trash-overlay {
   position: fixed;
