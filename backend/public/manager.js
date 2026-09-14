@@ -837,7 +837,6 @@ function buildDevisPrintHtml(item) {
       : '';
   const statut = [
     item.signe === 'oui' ? 'Devis signe' : '',
-    item.acompte === 'oui' ? 'Acompte recu' : '',
     item.refuse === 'oui' ? 'Refuse' : '',
   ]
     .filter(Boolean)
@@ -1047,7 +1046,6 @@ function buildCurrentDevisForPrint() {
     client: cleanText(raw['devis.nom']),
     objet: cleanText(raw['devis.objet_demande'] || raw['devis.objet']),
     signe: raw['devis.signe'] || 'non',
-    acompte: raw['devis.acompte'] || 'non',
     refuse: raw['devis.refuse'] || 'non',
     encadrants,
     encadrant: encadrants[0] || '',
@@ -2589,7 +2587,6 @@ $('#save-devis')?.addEventListener('click', async () => {
     client: cleanText(raw['devis.nom']),
     objet: cleanText(raw['devis.objet_demande'] || raw['devis.objet']),
     signe: raw['devis.signe'] || 'non',
-    acompte: raw['devis.acompte'] || 'non',
     refuse: raw['devis.refuse'] || 'non',
     refuseMotif: raw['devis.refuse'] === 'oui' ? (raw['devis.refuse_motif'] || '') : '',
     refuseNote: raw['devis.refuse'] === 'oui' ? cleanText(raw['devis.refuse_note'] || '') : '',
@@ -2625,7 +2622,7 @@ $('#save-devis')?.addEventListener('click', async () => {
 
   Store.save(Store.KEY_DEVIS, Store.upsertByField(list, item, 'num', currentDevisId));
 
-  if (item.signe === 'oui' && item.acompte === 'oui' && item.refuse !== 'oui') {
+  if (item.signe === 'oui' && item.refuse !== 'oui') {
     await autoCreateOrUpdateBonFromDevis(item);
   }
 
@@ -2890,7 +2887,7 @@ function getDevisPipeline(devis) {
     return 'd-refuse';
   }
 
-  if (devis.signe === 'oui' && devis.acompte === 'oui') {
+  if (devis.signe === 'oui') {
     return 'd-accepte';
   }
 
@@ -2941,7 +2938,7 @@ function renderDashboard() {
 
   // Devis en attente : ni accepte, ni refuse.
   const pendingDevis = devisList.filter(
-    (devis) => devis.refuse !== 'oui' && !(devis.signe === 'oui' && devis.acompte === 'oui') && getDevisPipeline(devis) !== 'd-accepte',
+    (devis) => devis.refuse !== 'oui' && devis.signe !== 'oui' && getDevisPipeline(devis) !== 'd-accepte',
   );
   const now = Date.now();
   const withAge = pendingDevis.map((devis) => {
@@ -3184,7 +3181,6 @@ function renderBoard() {
       </div>
       <div class="grid-3 small" style="margin-top:6px">
         <label><input type="checkbox" class="chk-signe" ${devis.signe === 'oui' ? 'checked' : ''}> signe</label>
-        <label><input type="checkbox" class="chk-acompte" ${devis.acompte === 'oui' ? 'checked' : ''}> acompte</label>
       </div>
       <div class="actions" style="margin-top:6px">
         <button class="btn primary open">Ouvrir</button>
@@ -3215,7 +3211,7 @@ function renderBoard() {
       const updated = devisList.map((entry) => (entry.id === devis.id ? devis : entry));
       Store.save(Store.KEY_DEVIS, updated);
 
-      if (devis.pipeline === 'd-accepte' && devis.acompte === 'oui') {
+      if (devis.pipeline === 'd-accepte' && devis.signe === 'oui') {
         autoCreateOrUpdateBonFromDevis(devis);
       }
 
@@ -3238,14 +3234,8 @@ function renderBoard() {
       devis.signe = event.target.checked ? 'oui' : 'non';
       syncDevisRawFlags(devis);
       Store.save(Store.KEY_DEVIS, devisList);
-    };
 
-    card.querySelector('.chk-acompte').onchange = (event) => {
-      devis.acompte = event.target.checked ? 'oui' : 'non';
-      syncDevisRawFlags(devis);
-      Store.save(Store.KEY_DEVIS, devisList);
-
-      if (devis.pipeline === 'd-accepte' && devis.acompte === 'oui') {
+      if (devis.signe === 'oui' && devis.refuse !== 'oui') {
         autoCreateOrUpdateBonFromDevis(devis);
         renderBoard();
       }

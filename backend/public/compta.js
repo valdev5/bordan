@@ -263,7 +263,6 @@ document.getElementById('save-devis-compta').addEventListener('click', async () 
     client: cleanText(raw['devis.nom']),
     objet: cleanText(raw['devis.objet_demande'] || raw['devis.objet']),
     signe: raw['devis.signe'] || 'non',
-    acompte: raw['devis.acompte'] || 'non',
     refuse: raw['devis.refuse'] || 'non',
     urgence: raw['devis.urgence'] || 'normal',
     admin,
@@ -954,7 +953,6 @@ function renderDevisCompta() {
         <span class="badge">Devis no ${devis.num || '-'}</span>
         <span class="badge">Encadrant: ${devis.encadrant || '-'}</span>
         <span class="badge">${devis.signe === 'oui' ? 'Signé' : 'Non signé'}</span>
-        <span class="badge">${devis.acompte === 'oui' ? 'Acompte reçu' : 'Sans acompte'}</span>
       </div>
       <p class="small">${(devis.objet || '').slice(0, 160)}</p>
 
