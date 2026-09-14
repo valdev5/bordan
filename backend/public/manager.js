@@ -2695,6 +2695,31 @@ function getBoardColumns() {
   };
 }
 
+// Met a jour le nombre de dossiers affiche dans l'entete de chaque colonne
+// (utile notamment quand la colonne est repliee sur mobile).
+function updateColumnCounts() {
+  Object.values(getBoardColumns()).forEach((body) => {
+    if (!body) {
+      return;
+    }
+    const badge = body.closest('.col')?.querySelector('.col-count');
+    if (badge) {
+      badge.textContent = String(body.children.length);
+    }
+  });
+}
+
+// Accordeon mobile : un clic sur l'entete replie/deplie sa colonne. Les
+// entetes sont statiques (jamais recreees par renderBoard), un seul
+// ecouteur delegue suffit.
+document.addEventListener('click', (event) => {
+  const head = event.target.closest('.col-head');
+  if (!head) {
+    return;
+  }
+  head.closest('.col')?.classList.toggle('expanded');
+});
+
 function getDevisPipeline(devis) {
   if (devis.pipeline) {
     return devis.pipeline;
@@ -3119,6 +3144,8 @@ function renderBoard() {
       ? `${boardMatchCount} resultat${boardMatchCount > 1 ? 's' : ''} sur ${boardTotalCount}`
       : '';
   }
+
+  updateColumnCounts();
 }
 
 /* Code postal -> ville */

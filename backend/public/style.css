@@ -1168,6 +1168,58 @@ textarea {
   border-bottom: 1px solid var(--border);
   border-radius: 12px 12px 0 0;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.col-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.col-count {
+  background: rgba(14, 165, 233, .18);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+.col-chevron {
+  display: none;
+  color: var(--muted);
+  font-size: 14px;
+  transition: transform .2s;
+}
+
+/* Accordeon : sur mobile, seule la colonne "expanded" affiche ses cartes -
+   evite d'avoir a tout defiler pour atteindre une colonne plus bas. Le
+   bureau (colonnes cote a cote) n'est pas concerne. */
+@media (max-width: 720px) {
+  .col-head {
+    cursor: pointer;
+  }
+
+  .col-chevron {
+    display: inline-block;
+  }
+
+  .col.expanded .col-chevron {
+    transform: rotate(90deg);
+  }
+
+  .col:not(.expanded) .col-body {
+    display: none;
+  }
+
+  .col:not(.expanded) {
+    max-height: none;
+  }
 }
 
 .col-body {
@@ -1787,4 +1839,78 @@ thead th {
   font-weight: 700;
   flex-shrink: 0;
 }
+
+/* ===== Feuille kilometrique ===== */
+.km-combo {
+  position: relative;
+}
+
+.km-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  max-height: 15rem;
+  overflow-y: auto;
+  z-index: 20;
+  display: none;
+}
+
+.km-suggestions.open {
+  display: block;
+}
+
+.km-suggestions button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.km-suggestions button:hover,
+.km-suggestions button.active {
+  background: var(--panel-2);
+}
+
+.km-suggestions button .cp {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.km-suggestion-empty {
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.km-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.km-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+}
+
+.km-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
 }
