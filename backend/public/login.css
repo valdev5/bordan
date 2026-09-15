@@ -14,7 +14,197 @@ body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
   color:var(--text);
-  background:var(--bg);
+  /* meme teinte que le haut du degrade du ciel de la scene SVG (#sky),
+     pour que la jointure avec le ciel etoile de secours soit invisible */
+  background-color:#060a10;
+  /* ciel etoile de secours : comble la zone vide au dessus de la devanture
+     sur mobile (mode "meet" cale en bas) ; invisible sur PC, cache derriere
+     le ciel plein de la scene SVG */
+  background-image:
+    radial-gradient(1.6px 1.6px at 8% 5%, rgba(188,214,232,.85), transparent 60%),
+    radial-gradient(1.2px 1.2px at 20% 12%, rgba(188,214,232,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 34% 4%, rgba(188,214,232,.75), transparent 60%),
+    radial-gradient(1.1px 1.1px at 48% 16%, rgba(188,214,232,.5), transparent 60%),
+    radial-gradient(1.6px 1.6px at 62% 7%, rgba(188,214,232,.8), transparent 60%),
+    radial-gradient(1.2px 1.2px at 74% 18%, rgba(188,214,232,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 88% 5%, rgba(188,214,232,.7), transparent 60%),
+    radial-gradient(1.1px 1.1px at 96% 15%, rgba(188,214,232,.5), transparent 60%),
+    radial-gradient(1px 1px at 14% 24%, rgba(188,214,232,.45), transparent 60%),
+    radial-gradient(1px 1px at 42% 28%, rgba(188,214,232,.4), transparent 60%),
+    radial-gradient(1px 1px at 58% 24%, rgba(188,214,232,.45), transparent 60%),
+    radial-gradient(1px 1px at 82% 26%, rgba(188,214,232,.4), transparent 60%);
+  background-repeat:no-repeat;
+  overflow-x:hidden;
+  position:relative;
+}
+
+/* ===== Devanture Bordanova animee en fond =====
+   viewBox large + preserveAspectRatio="slice" (equivalent de background-size:cover) :
+   remplit tout l'ecran sans jamais deformer les traits, meme sur mobile en portrait */
+.fx-scene{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:1;
+  pointer-events:none;
+}
+
+.fx-scene .cloud{
+  fill:#152233;
+  opacity:.35;
+  filter:blur(4px);
+  animation:cloud-drift 70s linear infinite;
+}
+.fx-scene .cloud.c2{ animation-duration:95s; animation-delay:-30s; opacity:.22; }
+.fx-scene .cloud.c3{ animation-duration:130s; animation-delay:-60s; opacity:.28; }
+
+@keyframes cloud-drift{
+  from{ transform:translateX(-20px); }
+  to{ transform:translateX(20px); }
+}
+
+.fx-scene .star{
+  fill:#bcd6e8;
+  animation:twinkle 4.5s ease-in-out infinite;
+}
+@keyframes twinkle{
+  0%,100%{ opacity:.15; }
+  50%{ opacity:.85; }
+}
+
+.fx-scene .block{ fill:#111a24; }
+.fx-scene .block-front{ fill:#141f2b; }
+.fx-scene .roofline{ stroke:#243342; stroke-width:.4; fill:none; }
+
+.fx-scene .shutter{ fill:#1a2531; stroke:#26374a; stroke-width:.3; }
+.fx-scene .shutter-lines line{ stroke:#0d151d; stroke-width:.35; }
+
+.fx-scene .awning{ fill:#0d3a56; }
+.fx-scene .awning-edge{ fill:#0ea5e9; opacity:.5; }
+
+.fx-scene .sign-pole{ stroke:#243342; stroke-width:.6; }
+
+.fx-scene .sign-box{
+  fill:#0a2c42;
+  stroke:#164a68;
+  stroke-width:.4;
+}
+.fx-scene .sign-logo{
+  filter:
+    drop-shadow(0 0 .3px #eafcff)
+    drop-shadow(0 0 1px #2dd4ff)
+    drop-shadow(0 0 2.4px #0ea5e9);
+}
+
+.fx-scene .sign-text{
+  font-family:'Nunito', Arial, sans-serif;
+  font-weight:900;
+  font-size:4.7px;
+  letter-spacing:.01em;
+  text-anchor:start;
+  dominant-baseline:middle;
+}
+.fx-scene .sign-text .t-borda{
+  fill:#eafcff;
+  filter:
+    drop-shadow(0 0 .3px #eafcff)
+    drop-shadow(0 0 1px #0ea5e9)
+    drop-shadow(0 0 2.2px #0ea5e9);
+}
+.fx-scene .sign-text .t-nova{
+  fill:#7df3ff;
+  filter:
+    drop-shadow(0 0 .3px #eafcff)
+    drop-shadow(0 0 1px #2dd4ff)
+    drop-shadow(0 0 2.4px #2dd4ff);
+}
+
+/* reflet fin qui balaie le texte a vitesse constante (via masque, net et non flou) */
+.fx-scene .sign-highlight{
+  font-family:'Nunito', Arial, sans-serif;
+  font-weight:900;
+  font-size:4.7px;
+  letter-spacing:.01em;
+  text-anchor:start;
+  dominant-baseline:middle;
+  fill:#f4fdff;
+  mask-image:linear-gradient(100deg, transparent 42%, #000 49%, #000 51%, transparent 58%);
+  -webkit-mask-image:linear-gradient(100deg, transparent 42%, #000 49%, #000 51%, transparent 58%);
+  mask-size:340% 100%;
+  -webkit-mask-size:340% 100%;
+  mask-repeat:no-repeat;
+  -webkit-mask-repeat:no-repeat;
+  filter:drop-shadow(0 0 .5px #f4fdff);
+  animation:sign-shimmer 3.6s linear infinite;
+}
+@keyframes sign-shimmer{
+  from{ mask-position:260% 0; -webkit-mask-position:260% 0; }
+  to{ mask-position:-120% 0; -webkit-mask-position:-120% 0; }
+}
+
+.fx-scene .porthole{
+  fill:#0e1620;
+  stroke:#2a3d51;
+  stroke-width:.4;
+}
+
+.fx-scene .accent-warm{
+  fill:#5a2a1f;
+  opacity:.55;
+}
+
+.fx-scene .shopwindow{
+  fill:#12222f;
+  stroke:#26495f;
+  stroke-width:.35;
+  opacity:.85;
+}
+
+.fx-scene .tree circle{ fill:#0e2420; }
+.fx-scene .tree .trunk{ fill:#1a130d; }
+
+.fx-scene .car{ opacity:.55; }
+.fx-scene .car-red{ fill:#5a1f1f; }
+.fx-scene .car-light{ fill:#38434f; }
+
+.fx-scene .ground{ fill:#05080b; }
+.fx-scene .lane{ stroke:rgba(230,237,243,.14); stroke-width:.35; }
+
+.fx-scene .bollard-red{ fill:#8a2a2a; }
+.fx-scene .bollard-white{ fill:#c9d3da; }
+
+/* reflet qui glisse sur les rideaux metalliques */
+.fx-scene .sheen{
+  fill:rgba(230,237,243,.5);
+  mix-blend-mode:overlay;
+}
+.fx-scene .sheen-mask-rect{
+  animation:sheen-run 6.5s ease-in-out infinite;
+}
+@keyframes sheen-run{
+  0%{ transform:translateX(-40px); }
+  45%{ transform:translateX(60px); }
+  100%{ transform:translateX(60px); }
+}
+
+/* halo discret derriere l'enseigne */
+.fx-halo{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.fx-halo::before{
+  content:'';
+  position:absolute;
+  width:50vmax; height:50vmax; max-width:620px; max-height:620px;
+  left:50%; top:25%;
+  transform:translate(-50%,-50%);
+  background:#0ea5e9;
+  border-radius:50%;
+  filter:blur(110px);
+  opacity:.14;
+  animation:halo-breathe 9s ease-in-out infinite;
+}
+@keyframes halo-breathe{
+  0%,100%{ opacity:.1; }
+  50%{ opacity:.2; }
 }
 
 /* CENTRAGE */
@@ -23,6 +213,8 @@ body{
   display:grid;
   place-items:center;
   padding:24px;
+  position:relative;
+  z-index:2;
 }
 
 /* CARTE */
@@ -33,6 +225,74 @@ body{
   border-radius:16px;
   padding:22px;
   box-shadow:0 10px 30px rgba(0,0,0,.4);
+  animation:card-in .6s cubic-bezier(.16,1,.3,1) both;
+}
+
+@keyframes card-in{
+  from{opacity:0; transform:translateY(18px) scale(.98);}
+  to{opacity:1; transform:translateY(0) scale(1);}
+}
+
+.card.shake{
+  animation:card-shake .45s cubic-bezier(.36,.07,.19,.97) both;
+}
+@keyframes card-shake{
+  10%, 90%{ transform:translateX(-1px); }
+  20%, 80%{ transform:translateX(2px); }
+  30%, 50%, 70%{ transform:translateX(-4px); }
+  40%, 60%{ transform:translateX(4px); }
+}
+
+/* Bandeau d'erreur, discret, a la place d'une alert() navigateur */
+.login-error{
+  display:none;
+  align-items:center;
+  gap:8px;
+  margin:-4px 0 14px;
+  padding:9px 12px;
+  border-radius:10px;
+  background:rgba(239,68,68,.1);
+  border:1px solid rgba(239,68,68,.35);
+  color:#ff9c9c;
+  font-size:13px;
+  line-height:1.35;
+}
+.login-error.show{
+  display:flex;
+  animation:error-in .25s ease both;
+}
+.login-error-icon{
+  width:16px;
+  height:16px;
+  flex:none;
+  color:#ff6b6b;
+}
+@keyframes error-in{
+  from{ opacity:0; transform:translateY(-4px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .card{
+    animation:none;
+  }
+  .card.shake{
+    animation:none;
+  }
+  .login-error.show{
+    animation:none;
+  }
+  .fx-scene .cloud,
+  .fx-scene .star,
+  .fx-scene .sign-highlight,
+  .fx-scene .sheen-mask-rect,
+  .fx-halo::before{
+    animation:none;
+  }
+  .btn.primary::after{
+    animation:none;
+    display:none;
+  }
 }
 
 /* TITRE */
@@ -90,6 +350,69 @@ select:focus{
   color:#001018;
   border-color:transparent;
   font-weight:600;
+  position:relative;
+  overflow:hidden;
+  transition:transform .15s ease, box-shadow .25s ease;
+  box-shadow:0 0 0 rgba(45,212,255,0);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+.btn.primary:disabled{
+  cursor:wait;
+  opacity:.85;
+}
+
+.spinner{
+  width:15px;
+  height:15px;
+  border-radius:50%;
+  border:2px solid rgba(0,16,24,.35);
+  border-top-color:#001018;
+  animation:spin .7s linear infinite;
+  flex:none;
+}
+
+@keyframes spin{
+  to{ transform:rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .spinner{
+    animation:none;
+  }
+}
+
+.btn.primary:hover{
+  transform:translateY(-1px);
+  box-shadow:0 0 14px rgba(14,165,233,.55), 0 0 28px rgba(45,212,255,.35);
+}
+
+.btn.primary:active{
+  transform:translateY(0) scale(.97);
+  box-shadow:0 0 6px rgba(14,165,233,.4);
+}
+
+/* Effet de balayage lumineux en boucle */
+.btn.primary::after{
+  content:'';
+  position:absolute;
+  top:0;
+  left:-60%;
+  width:40%;
+  height:100%;
+  background:linear-gradient(120deg, transparent, rgba(255,255,255,.55), transparent);
+  transform:skewX(-20deg);
+  animation:btn-sheen 3.2s ease-in-out infinite;
+  pointer-events:none;
+}
+
+@keyframes btn-sheen{
+  0%{left:-60%;}
+  35%{left:130%;}
+  100%{left:130%;}
 }
 
 /* MOBILE */
@@ -97,5 +420,40 @@ select:focus{
   .card{
     padding:18px;
     border-radius:14px;
+  }
+  /* Safari/iOS gere tres mal les nombreux filtres (blur, drop-shadow) empiles
+     et animes en continu : ca peut suffire a rendre le telephone a la traine
+     au point que le clavier/le tactile deviennent poussifs. On simplifie
+     fortement sur mobile : moins de flou, moins d'animations simultanees.
+     Le halo suit aussi l'enseigne (mode "meet" cale en bas, voir login.js). */
+  .fx-halo::before{
+    top:78%;
+    animation:none;
+    opacity:.14;
+    filter:blur(70px);
+  }
+  .fx-scene .cloud{
+    animation:none;
+    filter:none;
+    opacity:.18;
+  }
+  .fx-scene .star{
+    animation:none;
+    opacity:.5;
+  }
+  .fx-scene .sheen-mask-rect{
+    animation:none;
+    display:none;
+  }
+  .fx-scene .sign-highlight{
+    animation:none;
+    display:none;
+  }
+  .fx-scene .sign-text .t-borda,
+  .fx-scene .sign-text .t-nova{
+    filter:drop-shadow(0 0 2px currentColor);
+  }
+  .fx-scene .sign-logo{
+    filter:drop-shadow(0 0 2px #2dd4ff);
   }
 }

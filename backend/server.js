@@ -4,13 +4,24 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
+const { initDb } = require("./src/db/init");
+const { startDailyBackup } = require("./src/backup");
 const authRoutes = require("./src/routes/auth");
 const bonRoutes = require("./src/routes/bons");
 const auditRoutes = require("./src/routes/audit");
+const stateRoutes = require("./src/routes/state");
+const trashRoutes = require("./src/routes/trash");
+const pushRoutes = require("./src/routes/push");
+const calendarTokenRoutes = require("./src/routes/calendarToken");
+const calendarFeedRoutes = require("./src/routes/calendarFeed");
+const kilometriqueRoutes = require("./src/routes/kilometrique");
 
 const app = express();
 
 const PORT = Number(process.env.PORT || 3001);
+
+initDb();
+startDailyBackup();
 
 // CORS DEV: autorise 127.0.0.1 + localhost sur ports courants + variables d'env
 const allowedOrigins = new Set([
@@ -40,11 +51,17 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/bons", bonRoutes);
 app.use("/api/audit", auditRoutes);
+app.use("/api/state", stateRoutes);
+app.use("/api/trash", trashRoutes);
+app.use("/api/push", pushRoutes);
+app.use("/api/calendar", calendarTokenRoutes);
+app.use("/calendar", calendarFeedRoutes);
+app.use("/api/kilometrique", kilometriqueRoutes);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

@@ -12,6 +12,7 @@ const users = [
   { username: 'Cédric M', role: 'manager' },
   { username: 'Cédric A', role: 'manager' },
   { username: 'Vivien', role: 'manager' },
+  { username: 'Karine', role: 'manager' },
 
   // workers
   
@@ -26,11 +27,31 @@ const users = [
   { username: 'Burak', role: 'worker' },
   { username: 'Bertrand', role: 'worker' },
   { username: 'Olivier', role: 'worker' },
+  { username: 'Edgar', role: 'worker' },
+
+  // workers - equipe Tarare
+  { username: 'Denis', role: 'worker' },
+  { username: 'Bachir', role: 'worker' },
+  { username: 'Fabrice', role: 'worker' },
+  { username: 'Mazlum', role: 'worker' },
+  { username: 'Omer', role: 'worker' },
+  { username: 'Lucas', role: 'worker' },
+  { username: 'Thierry', role: 'worker' },
+  { username: 'Anthony', role: 'worker' },
+  { username: 'Gérard', role: 'worker' },
+  { username: 'Julien', role: 'worker' },
+  { username: 'Philippe', role: 'worker' },
+  { username: 'Cheik', role: 'worker' },
+  { username: 'Ahmed', role: 'worker' },
+  { username: 'Yoseane', role: 'worker' },
+  { username: 'Chris', role: 'worker' },
+  { username: 'Wakary', role: 'worker' },
+  { username: 'ThomasV', role: 'worker' },
+  { username: 'Christophe', role: 'worker' },
 
   // compta
   { username: 'Sophie', role: 'compta' },
-  { username: 'Catherine', role: 'compta' },
-  { username: 'Karine', role: 'compta' }
+  { username: 'Catherine', role: 'compta' }
 ];
 
 async function run() {

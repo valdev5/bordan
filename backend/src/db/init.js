@@ -48,7 +48,71 @@ function initDb() {
         UPDATE bons SET updated_at = datetime('now') WHERE id = NEW.id;
       END;
     `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS shared_state (
+        key TEXT PRIMARY KEY,
+        value_json TEXT NOT NULL DEFAULT '[]',
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS deleted_ids (
+        kind TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (kind, item_id)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS trash (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        item_json TEXT NOT NULL,
+        deleted_by TEXT,
+        deleted_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS km_sheets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        mois TEXT NOT NULL,
+        trajets_json TEXT NOT NULL DEFAULT '[]',
+        total_km REAL NOT NULL DEFAULT 0,
+        statut TEXT NOT NULL DEFAULT 'envoyee' CHECK(statut IN ('envoyee','archivee')),
+        envoye_le TEXT NOT NULL DEFAULT (datetime('now')),
+        archive_le TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        UNIQUE(user_id, mois)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS calendar_tokens (
+        username TEXT PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
   });
+  
 }
 
 module.exports = { initDb };

@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const { db } = require('../db/conn');
-const { getSecret } = require('../middleware/auth');
+const { getSecret, requireAuth, requireRole } = require('../middleware/auth');
 const { audit } = require('./helpers');
 
 const router = express.Router();
@@ -30,6 +30,120 @@ router.post('/login', (req, res) => {
     return res.json({
       token,
       user: { id: user.id, username: user.username, role: user.role }
+    });
+  });
+});
+
+// POST /api/auth/users (manager only) - cree un compte (worker/manager/compta)
+router.post('/users', requireAuth, requireRole('manager'), (req, res) => {
+  const username = String(req.body?.username || '').trim();
+  const password = String(req.body?.password || '');
+  const role = String(req.body?.role || '').trim();
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'username and password are required' });
+  }
+  if (!['manager', 'worker', 'compta'].includes(role)) {
+    return res.status(400).json({ error: 'role must be manager, worker or compta' });
+  }
+
+  db.get('SELECT id FROM users WHERE username = ?', [username], async (err, existing) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (existing) return res.status(409).json({ error: 'Ce nom d\'utilisateur existe deja' });
+
+    const hash = await bcrypt.hash(password, 12);
+    db.run(
+      'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+      [username, hash, role],
+      function (err2) {
+        if (err2) return res.status(500).json({ error: 'DB error' });
+        audit(req.user.sub, 'CREATE_USER', 'USER', this.lastID, { username, role });
+        return res.json({ id: this.lastID, username, role });
+      },
+    );
+  });
+});
+
+// DELETE /api/auth/users/:username (manager only) - supprime un compte
+router.delete('/users/:username', requireAuth, requireRole('manager'), (req, res) => {
+  const username = String(req.params.username || '').trim();
+
+  db.run('DELETE FROM users WHERE username = ?', [username], function (err) {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    audit(req.user.sub, 'DELETE_USER', 'USER', null, { username });
+    return res.json({ ok: true });
+  });
+});
+
+// PATCH /api/auth/users/:username/password (manager only) - reinitialise le
+// mot de passe d'un autre compte, sans connaitre l'ancien (mot de passe oublie)
+router.patch('/users/:username/password', requireAuth, requireRole('manager'), (req, res) => {
+  const username = String(req.params.username || '').trim();
+  const newPassword = String(req.body?.newPassword || '');
+
+  if (!newPassword || newPassword.length < 4) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 4 caracteres' });
+  }
+
+  db.get('SELECT id FROM users WHERE username = ?', [username], async (err, user) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id], (err2) => {
+      if (err2) return res.status(500).json({ error: 'DB error' });
+      audit(req.user.sub, 'RESET_PASSWORD', 'USER', user.id, { username });
+      return res.json({ ok: true });
+    });
+  });
+});
+
+// PATCH /api/auth/users/:username/role (manager only) - change le role d'un compte
+router.patch('/users/:username/role', requireAuth, requireRole('manager'), (req, res) => {
+  const username = String(req.params.username || '').trim();
+  const role = String(req.body?.role || '').trim();
+
+  if (!['manager', 'worker', 'compta'].includes(role)) {
+    return res.status(400).json({ error: 'role must be manager, worker or compta' });
+  }
+
+  db.get('SELECT id FROM users WHERE username = ?', [username], (err, user) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    db.run('UPDATE users SET role = ? WHERE id = ?', [role, user.id], (err2) => {
+      if (err2) return res.status(500).json({ error: 'DB error' });
+      audit(req.user.sub, 'CHANGE_ROLE', 'USER', user.id, { username, role });
+      return res.json({ ok: true, username, role });
+    });
+  });
+});
+
+// PATCH /api/auth/password (n'importe quel compte connecte) - change son propre mot de passe
+router.patch('/password', requireAuth, (req, res) => {
+  const currentPassword = String(req.body?.currentPassword || '');
+  const newPassword = String(req.body?.newPassword || '');
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+  }
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 4 caracteres' });
+  }
+
+  db.get('SELECT id, password_hash FROM users WHERE id = ?', [req.user.sub], async (err, user) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    const ok = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!ok) return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id], (err2) => {
+      if (err2) return res.status(500).json({ error: 'DB error' });
+      audit(req.user.sub, 'CHANGE_PASSWORD', 'USER', user.id);
+      return res.json({ ok: true });
     });
   });
 });

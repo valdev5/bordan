@@ -12,13 +12,33 @@
 </head>
 <body>
   <header class="topbar">
-    <h1 class="site-title">Planification</h1>
+    <span id="login-counter" class="login-counter" title="Nombre total de connexions a l'appli"></span>
+    <div class="brand">
+      <img src="logo-transparent.png" alt="" class="brand-logo">
+      <h1 class="site-title">Planification</h1>
+    </div>
     <div class="auth-inline">
       <span id="whoami" class="muted"></span>
+      <div class="menu-dropdown">
+        <button class="btn" id="btn-options" type="button">Options ▾</button>
+        <div class="menu-dropdown-panel" id="options-panel">
+          <button class="btn" id="btn-install" type="button" style="display:none;">Installer l'appli</button>
+          <button class="btn" id="btn-push" type="button">Activer les notifications</button>
+          <button class="btn" id="btn-calendar-link" type="button">Lien calendrier (Outlook/Google)</button>
+          <button class="btn" id="btn-change-password" type="button">Changer mon mot de passe</button>
+          <button class="btn" id="btn-reset-user-password" type="button">Réinitialiser le mdp d'un compte</button>
+          <button class="btn" id="btn-change-user-role" type="button">Changer le rôle d'un compte</button>
+          <button class="btn" id="btn-corbeille" type="button">🗑️ Corbeille</button>
+        </div>
+      </div>
+      <a class="btn primary" id="btn-compta-space" href="compta.html" style="display:none;">💼 Espace comptabilité</a>
       <a class="btn outline" href="#" id="btn-logout">Se déconnecter</a>
     </div>
     <nav class="tabs">
       <button class="tab active" data-tab="board">Tableau</button>
+      <button class="tab" data-tab="dashboard">Tableau de bord</button>
+      <button class="tab" data-tab="planning">Planning</button>
+      <button class="tab" data-tab="messagerie">Messagerie<span class="tab-badge" id="messagerie-tab-badge" style="display:none"></span></button>
       <button class="tab" data-tab="devis">Devis</button>
       <button class="tab" data-tab="bon">Bon de travail</button>
       <button class="tab" data-tab="bon-direct">BT dépannage</button>
@@ -29,7 +49,15 @@
       <label class="checkbox-inline">
         <input type="checkbox" id="show-all"> Voir tous les chantiers
       </label>
-      
+      <label class="checkbox-inline">
+        <input type="checkbox" id="show-unassigned"> Sans responsable uniquement
+      </label>
+      <label class="checkbox-inline">
+        <input type="checkbox" id="show-charbo"> Voir Charbo
+      </label>
+      <label class="checkbox-inline">
+        <input type="checkbox" id="show-tarare"> Voir Tarare
+      </label>
     </div>
   </header>
 
@@ -37,20 +65,172 @@
     <!-- ===== BOARD ===== -->
     <section class="view show" id="tab-board">
       <h2 class="title">Tableau de suivi</h2>
-      <div class="board board--4">
+
+      <div class="search-bar">
+        <span class="search-bar-icon">🔍</span>
+        <input type="text" id="board-search" placeholder="Rechercher un client ou un numéro…">
+      </div>
+      <div class="small muted" id="board-search-count" style="margin-top:6px"></div>
+
+      <div class="board board--6">
         <!-- Devis -->
-        <div class="col"><div class="col-head">Devis – Attente d’appel / RDV</div><div id="d-attente-appel" class="col-body"></div></div>
-        <div class="col"><div class="col-head">Devis – RDV pris</div><div id="d-rdv-pris" class="col-body"></div></div>
-        <div class="col"><div class="col-head">Devis – À saisir</div><div id="d-a-saisir" class="col-body"></div></div>
-        <div class="col"><div class="col-head">Devis – Saisi / attente retour</div><div id="d-attente-retour" class="col-body"></div></div>
-        <div class="col"><div class="col-head">Devis – Accepté</div><div id="d-accepte" class="col-body"></div></div>
-        <div class="col"><div class="col-head">Devis – Refusé</div><div id="d-refuse" class="col-body"></div></div>
+        <div class="col expanded"><div class="col-head"><span class="col-head-label">Devis – Attente d’appel / RDV</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-attente-appel" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">Devis – RDV pris</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-rdv-pris" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">Devis – À saisir</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-a-saisir" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">Devis – Saisi / attente retour</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-attente-retour" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">Devis – Accepté</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-accepte" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">Devis – Refusé</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-refuse" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">Devis – Archivés</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="d-archive" class="col-body"></div></div>
+      </div>
+
+      <div class="board board--6">
         <!-- Bons -->
-        <div class="col"><div class="col-head">BT – Prêt / en attente</div><div id="b-pret" class="col-body"></div></div>
-        <div class="col"><div class="col-head">BT – RDV pris + Affectation</div><div id="b-affect" class="col-body"></div></div>
-        <div class="col"><div class="col-head">BT – Chantier en cours</div><div id="b-encours" class="col-body"></div></div>
-        <div class="col"><div class="col-head">BT – À facturer</div><div id="b-facturer" class="col-body"></div></div>
-        <div class="col"><div class="col-head">BT – Archivés</div><div id="b-archive" class="col-body"></div></div>
+        <div class="col expanded"><div class="col-head"><span class="col-head-label">BT – Prêt / en attente</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="b-pret" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">BT – RDV pris + Affectation</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="b-affect" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">BT – Chantier en cours</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="b-encours" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">BT – À facturer</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="b-facturer" class="col-body"></div></div>
+        <div class="col"><div class="col-head"><span class="col-head-label">BT – Archivés</span><span class="col-head-meta"><span class="col-count">0</span><span class="col-chevron" aria-hidden="true">›</span></span></div><div id="b-archive" class="col-body"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== TABLEAU DE BORD ===== -->
+    <section class="view" id="tab-dashboard">
+      <div class="dash-page">
+        <h2 class="title">Tableau de bord</h2>
+        <div class="small muted" id="dash-updated" style="margin-bottom:14px"></div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card accent-blue">
+            <span class="icon">🏗️</span>
+            <div class="label">Chantiers en cours</div>
+            <div class="value" id="dash-kpi-chantiers">–</div>
+          </div>
+
+          <div class="kpi-card accent-green">
+            <span class="icon">✍️</span>
+            <div class="label">Taux de signature client</div>
+            <div class="ring-wrap" style="margin-top:6px">
+              <svg class="ring" width="52" height="52" viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="22" fill="none" stroke="#1e2a35" stroke-width="6"/>
+                <circle id="dash-sign-ring" cx="26" cy="26" r="22" fill="none" stroke="#22c55e" stroke-width="6"
+                  stroke-dasharray="138.2" stroke-dashoffset="138.2" stroke-linecap="round"
+                  transform="rotate(-90 26 26)"/>
+              </svg>
+              <div class="ring-label"><strong id="dash-sign-pct">–</strong><span id="dash-sign-detail"></span></div>
+            </div>
+          </div>
+
+          <div class="kpi-card accent-amber">
+            <span class="icon">⏳</span>
+            <div class="label">Devis en attente</div>
+            <div class="value" id="dash-kpi-devis-attente">–</div>
+            <div class="delta warn" id="dash-devis-age-moyen"></div>
+          </div>
+
+          <div class="kpi-card accent-red">
+            <span class="icon">🔴</span>
+            <div class="label">Devis urgents en attente</div>
+            <div class="value" id="dash-kpi-devis-urgent">–</div>
+            <div class="delta down">À traiter en priorité</div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="section">
+            <h2>Devis en attente depuis le plus longtemps</h2>
+            <div class="sub">Non signés, non refusés — triés par ancienneté</div>
+            <table>
+              <thead>
+                <tr><th>Client</th><th>Devis</th><th>Urgence</th><th>Depuis</th></tr>
+              </thead>
+              <tbody id="dash-devis-attente-body"></tbody>
+            </table>
+            <div class="small muted" id="dash-devis-attente-empty" style="display:none; padding:8px 0">Aucun devis en attente.</div>
+          </div>
+
+          <div class="section">
+            <h2>Chantiers par étape</h2>
+            <div class="sub">Répartition des bons actifs</div>
+            <div id="dash-pipe-bars"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Répartition par site</h2>
+          <div class="sub">Bons actifs, équipe affectée</div>
+          <div id="dash-site-bars"></div>
+        </div>
+
+        <div class="section">
+          <h2>Motifs de refus</h2>
+          <div class="sub">Devis refusés, 30 derniers jours</div>
+          <div id="dash-refuse-empty" class="small muted" style="display:none">Aucun devis refusé sur la période.</div>
+          <div id="dash-refuse-bars"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PLANNING ===== -->
+    <section class="view" id="tab-planning">
+      <div class="sheet">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+          <h2 class="title" style="margin:0">Planning de la semaine</h2>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button type="button" class="btn outline" id="planning-mgr-prev" aria-label="Semaine précédente">‹</button>
+            <span class="small muted" id="planning-mgr-range"></span>
+            <button type="button" class="btn outline" id="planning-mgr-next" aria-label="Semaine suivante">›</button>
+          </div>
+          <div class="team-filter" id="planning-mgr-team-toggle">
+            <button type="button" class="team-filter-btn active" data-team="all">Toute l'équipe</button>
+            <button type="button" class="team-filter-btn" data-team="Charbo">Charbo</button>
+            <button type="button" class="team-filter-btn" data-team="Tarare">Tarare</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="planning-table">
+            <thead>
+              <tr id="planning-mgr-head"></tr>
+            </thead>
+            <tbody id="planning-mgr-body"></tbody>
+          </table>
+        </div>
+
+        <div class="small muted" style="margin-top:12px;display:flex;align-items:center;gap:16px">
+          <span><span class="planning-swatch"></span> Mission</span>
+          <span><span class="planning-swatch conflict"></span> Deux missions le même jour</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MESSAGERIE ===== -->
+    <section class="view" id="tab-messagerie">
+      <div class="messenger">
+        <div class="thread-list">
+          <div class="thread-list-head">
+            <h2>Chantiers</h2>
+            <input type="text" id="msg-search" class="thread-search" placeholder="Rechercher un client ou un numéro…">
+          </div>
+          <div class="threads" id="msg-threads"></div>
+        </div>
+
+        <div class="conversation">
+          <div class="conv-head">
+            <div>
+              <h2 id="msg-conv-title">—</h2>
+              <div class="small" id="msg-conv-sub">—</div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center">
+              <a href="#" class="conv-head-link" id="msg-conv-open">Ouvrir le bon ↗</a>
+              <button type="button" class="btn outline" id="msg-conv-delete" style="display:none">Supprimer la conversation</button>
+            </div>
+          </div>
+          <div class="conv-body" id="msg-conv-body"></div>
+          <div class="conv-form">
+            <input type="text" id="msg-compose-input" placeholder="Écrire un message…">
+            <button type="button" class="btn primary" id="msg-compose-send">Envoyer</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -65,16 +245,42 @@
           <div class="row"><label>Indice</label><input name="devis.indice" type="text" placeholder="Indice interne (optionnel)"></div>
         </div>
 
+        <div class="row"><label>Urgence</label>
+          <select name="devis.urgence">
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+            <option value="tres urgent">Très urgent</option>
+          </select>
+        </div>
+
         <div class="grid-2">
           <div class="row"><label>Nom du client</label><input name="devis.nom" type="text"></div>
           <div class="row"><label>N° client</label><input name="devis.num_client" type="text"></div>
+        </div>
+
+        <div class="history-box" id="devis-history-box">
+          <div class="history-head">
+            <strong>Historique — <span id="devis-history-client-name"></span></strong>
+            <span class="history-count" id="devis-history-count"></span>
+          </div>
+          <div class="small muted" style="padding:6px 13px 0">Cliquez sur une ligne pour reprendre son adresse / téléphone.</div>
+          <div class="timeline" id="devis-history-timeline"></div>
         </div>
 
         <div class="row"><label>Adresse</label><input name="devis.adresse" type="text"></div>
 
         <div class="grid-2">
           <div class="row"><label>Code postal</label><input name="devis.code_postal" type="text"></div>
-          <div class="row"><label>Ville</label><input name="devis.ville" type="text"></div>
+          <div class="row">
+  <label>Ville</label>
+  <select name="devis.ville">
+    <option value="">Choisir une ville</option>
+  </select>
+</div>
+        </div>
+        <div class="addr-actions">
+          <button type="button" class="btn outline addr-open" data-addr="devis.adresse" data-cp="devis.code_postal" data-ville="devis.ville">📍 Maps</button>
+          <button type="button" class="btn outline addr-open-waze" data-addr="devis.adresse" data-cp="devis.code_postal" data-ville="devis.ville">🚗 Waze</button>
         </div>
 
         <!-- Adresse chantier différente (DEVIS) -->
@@ -85,7 +291,16 @@
           <div class="row"><label>Adresse chantier</label><input name="devis.adresse_chantier" type="text"></div>
           <div class="grid-2">
             <div class="row"><label>Code postal chantier</label><input name="devis.chantier_code_postal" type="text"></div>
-            <div class="row"><label>Ville chantier</label><input name="devis.chantier_ville" type="text"></div>
+            <div class="row">
+  <label>Ville chantier</label>
+  <select name="devis.chantier_ville">
+    <option value="">Choisir une ville</option>
+  </select>
+</div>
+          </div>
+          <div class="addr-actions">
+            <button type="button" class="btn outline addr-open" data-addr="devis.adresse_chantier" data-cp="devis.chantier_code_postal" data-ville="devis.chantier_ville">📍 Maps</button>
+            <button type="button" class="btn outline addr-open-waze" data-addr="devis.adresse_chantier" data-cp="devis.chantier_code_postal" data-ville="devis.chantier_ville">🚗 Waze</button>
           </div>
           <div class="grid-2">
             <div class="row"><label>Nom locataire</label><input name="devis.nom_locataire" type="text"></div>
@@ -95,9 +310,14 @@
         </div>
 
         <div class="grid-2">
-          <div class="row"><label>Téléphone</label><input name="devis.tel" type="tel"></div>
-          <div class="row"><label>Objet / Objet de la demande</label><input name="devis.objet_demande" type="text"></div>
-        </div>
+  <div class="row"><label>Téléphone</label><input name="devis.tel" type="tel"></div>
+  <div class="row"><label>Email</label><input name="devis.email" type="email"></div>
+</div>
+
+<div class="row">
+  <label>Objet de la demande</label>
+  <input name="devis.objet_demande" type="text">
+</div>
 
         <div class="row"><label>Notes avant RDV</label><textarea name="devis.notes_avant_rdv" rows="3" placeholder="Infos à noter avant le rendez-vous…"></textarea></div>
 
@@ -109,6 +329,7 @@
               <label><input type="checkbox" class="devis-enc-team" value="Cédric M"><span>Cédric M</span></label>
               <label><input type="checkbox" class="devis-enc-team" value="Cédric A"><span>Cédric A</span></label>
               <label><input type="checkbox" class="devis-enc-team" value="Vivien"><span>Vivien</span></label>
+              <label><input type="checkbox" class="devis-enc-team" value="Karine"><span>Karine</span></label>
             </div>
           </div>
         </fieldset>
@@ -117,8 +338,37 @@
           <legend>Suivi</legend>
           <div class="grid-3">
             <label><input type="checkbox" name="devis.signe"> Devis signé</label>
-            <label><input type="checkbox" name="devis.acompte"> Acompte reçu</label>
-            <label><input type="checkbox" name="devis.refuse"> Refusé</label>
+            <label><input type="checkbox" name="devis.refuse" id="d-refuse-cb"> Refusé</label>
+          </div>
+          <div id="d-refuse-bloc" style="display:none">
+            <div class="row"><label>Motif du refus</label>
+              <select name="devis.refuse_motif">
+                <option value="">Choisir un motif</option>
+                <option>Prix trop élevé</option>
+                <option>Concurrent choisi</option>
+                <option>Projet annulé</option>
+                <option>Délai trop long</option>
+                <option>Sans réponse du client</option>
+                <option>Autre</option>
+              </select>
+            </div>
+            <div class="row"><label>Note (facultatif)</label><textarea name="devis.refuse_note" rows="2" placeholder="Ex. le client a trouvé moins cher ailleurs"></textarea></div>
+          </div>
+          <div class="row"><label>Envoyer à la compta</label>
+            <select id="devis-admin">
+              <option value="">—</option><option>Sophie</option><option>Catherine</option><option>Karine</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <!-- Photos devis -->
+        <fieldset>
+          <legend>Photos</legend>
+          <div class="gallery" id="dev-gallery"></div>
+          <div class="small muted" id="dev-gallery-empty" style="margin:6px 0">Enregistrez le devis pour activer les photos.</div>
+          <div style="margin-top:8px">
+            <input type="file" id="dev-photo-input" accept="image/*" multiple style="display:none">
+            <button type="button" class="btn" id="dev-photo-add" disabled>Ajouter des photos</button>
           </div>
         </fieldset>
 
@@ -137,7 +387,7 @@
         <div class="grid-3">
           <div class="row"><label>N° de devis rattaché</label><input name="bon.num_devis" type="text"></div>
           <div class="row"><label>Date du devis</label><input name="bon.date_devis" type="date"></div>
-          <div class="row"><label>Acompte</label><input name="bon.acompte" type="text" placeholder="Oui / Non"></div>
+          <div class="row"><label>Acompte</label><select name="bon.acompte"><option value="">—</option><option value="Oui">Oui</option><option value="Non">Non</option></select></div>
         </div>
 
         <div class="grid-3">
@@ -145,12 +395,57 @@
           <div class="row"><label>Client – N°</label><input name="bon.client_num" type="text"></div>
           <div class="row"><label>Téléphone</label><input name="bon.client_tel" type="tel"></div>
         </div>
+
+        <div class="row"><label>Email</label><input name="bon.email" type="email"></div>
+
+        <div class="history-box" id="bon-history-box">
+          <div class="history-head">
+            <strong>Historique — <span id="bon-history-client-name"></span></strong>
+            <span class="history-count" id="bon-history-count"></span>
+          </div>
+          <div class="small muted" style="padding:6px 13px 0">Cliquez sur une ligne pour reprendre son adresse / téléphone.</div>
+          <div class="timeline" id="bon-history-timeline"></div>
+        </div>
+
         <div class="row"><label>Adresse</label><input name="bon.client_adresse" type="text"></div>
         <div class="grid-2">
           <div class="row"><label>Code postal</label><input name="bon.client_code_postal" type="text"></div>
-          <div class="row"><label>Ville</label><input name="bon.client_ville" type="text"></div>
+          <div class="row">
+  <label>Ville</label>
+  <select name="bon.client_ville">
+    <option value="">Choisir une ville</option>
+  </select>
+</div>
         </div>
+        <div class="addr-actions">
+          <button type="button" class="btn outline addr-open" data-addr="bon.client_adresse" data-cp="bon.client_code_postal" data-ville="bon.client_ville">📍 Maps</button>
+          <button type="button" class="btn outline addr-open-waze" data-addr="bon.client_adresse" data-cp="bon.client_code_postal" data-ville="bon.client_ville">🚗 Waze</button>
+        </div>
+
+        <!-- Adresse chantier différente (BON) -->
+        <fieldset>
+          <legend>Adresse chantier</legend>
+          <label><input type="checkbox" name="bon.adresse_chantier_diff" id="b-adrdiff"> Adresse chantier différente</label>
+          <div id="b-bloc-chantier" style="display:none; margin-top:8px">
+            <div class="row"><label>Adresse chantier</label><input name="bon.adresse_chantier" type="text"></div>
+            <div class="grid-2">
+              <div class="row"><label>Code postal chantier</label><input name="bon.chantier_code_postal" type="text"></div>
+              <div class="row"><label>Ville chantier</label><input name="bon.chantier_ville" type="text"></div>
+            </div>
+            <div class="addr-actions">
+              <button type="button" class="btn outline addr-open" data-addr="bon.adresse_chantier" data-cp="bon.chantier_code_postal" data-ville="bon.chantier_ville">📍 Maps</button>
+              <button type="button" class="btn outline addr-open-waze" data-addr="bon.adresse_chantier" data-cp="bon.chantier_code_postal" data-ville="bon.chantier_ville">🚗 Waze</button>
+            </div>
+            <div class="grid-2">
+              <div class="row"><label>Nom locataire</label><input name="bon.nom_locataire" type="text"></div>
+              <div class="row"><label>Téléphone locataire</label><input name="bon.tel_locataire" type="tel"></div>
+            </div>
+            <div class="row"><label>Remarques chantier</label><textarea name="bon.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
+          </div>
+        </fieldset>
+
         <div class="row"><label>Travaux à réaliser</label><textarea name="bon.objet" rows="3" placeholder="Description du dépannage / chantier…"></textarea></div>
+        <div class="row"><label>Détails</label><textarea name="bon.details" rows="3" placeholder="Informations complémentaires…"></textarea></div>
 
         <fieldset>
           <legend>RDV initial</legend>
@@ -175,6 +470,7 @@
           <legend>Affectation & Gestion</legend>
           <div class="row">
             <label>Équipe affectée</label>
+            <div class="small muted" style="margin-bottom:4px">Charbo</div>
             <div class="chips">
               <label><input type="checkbox" class="aff-team" value="Alexy"><span>Alexy</span></label>
               <label><input type="checkbox" class="aff-team" value="Thomas"><span>Thomas</span></label>
@@ -187,7 +483,34 @@
               <label><input type="checkbox" class="aff-team" value="Bertrand"><span>Bertrand</span></label>
               <label><input type="checkbox" class="aff-team" value="Maxence"><span>Maxence</span></label>
               <label><input type="checkbox" class="aff-team" value="Olivier"><span>Olivier</span></label>
+              <label><input type="checkbox" class="aff-team" value="Edgar"><span>Edgar</span></label>
+              <label><input type="checkbox" class="aff-team" value="Vivien"><span>Vivien</span></label>
+              <label><input type="checkbox" class="aff-team" value="Laurent"><span>Laurent</span></label>
+            </div>
 
+            <div class="small muted" style="margin:10px 0 4px">Tarare</div>
+            <div class="chips">
+              <label><input type="checkbox" class="aff-team" value="Denis"><span>Denis</span></label>
+              <label><input type="checkbox" class="aff-team" value="Bachir"><span>Bachir</span></label>
+              <label><input type="checkbox" class="aff-team" value="Olivier"><span>Olivier</span></label>
+              <label><input type="checkbox" class="aff-team" value="Fabrice"><span>Fabrice</span></label>
+              <label><input type="checkbox" class="aff-team" value="Mazlum"><span>Mazlum</span></label>
+              <label><input type="checkbox" class="aff-team" value="Omer"><span>Omer</span></label>
+              <label><input type="checkbox" class="aff-team" value="Lucas"><span>Lucas</span></label>
+              <label><input type="checkbox" class="aff-team" value="Thierry"><span>Thierry</span></label>
+              <label><input type="checkbox" class="aff-team" value="Anthony"><span>Anthony</span></label>
+              <label><input type="checkbox" class="aff-team" value="Gérard"><span>Gérard</span></label>
+              <label><input type="checkbox" class="aff-team" value="Julien"><span>Julien</span></label>
+              <label><input type="checkbox" class="aff-team" value="Philippe"><span>Philippe</span></label>
+              <label><input type="checkbox" class="aff-team" value="Cheik"><span>Cheik</span></label>
+              <label><input type="checkbox" class="aff-team" value="Ahmed"><span>Ahmed</span></label>
+              <label><input type="checkbox" class="aff-team" value="Yoseane"><span>Yoseane</span></label>
+              <label><input type="checkbox" class="aff-team" value="Chris"><span>Chris</span></label>
+              <label><input type="checkbox" class="aff-team" value="Wakary"><span>Wakary</span></label>
+              <label><input type="checkbox" class="aff-team" value="ThomasV"><span>ThomasV</span></label>
+              <label><input type="checkbox" class="aff-team" value="Christophe"><span>Christophe</span></label>
+              <label><input type="checkbox" class="aff-team" value="Cédric A"><span>Cédric A</span></label>
+              <label><input type="checkbox" class="aff-team" value="Cédric M"><span>Cédric M</span></label>
             </div>
           </div>
           <div class="grid-2">
@@ -197,6 +520,7 @@
                 <label><input type="checkbox" class="enc-team" value="Cédric M"><span>Cédric M</span></label>
                 <label><input type="checkbox" class="enc-team" value="Cédric A"><span>Cédric A</span></label>
                 <label><input type="checkbox" class="enc-team" value="Vivien"><span>Vivien</span></label>
+                <label><input type="checkbox" class="enc-team" value="Karine"><span>Karine</span></label>
               </div>
             </div>
             <div class="row"><label>Envoyer à la compta</label>
@@ -216,24 +540,6 @@
               <label><input type="checkbox" class="aff-team" value="Catherine"><span>Catherine</span></label>
               <label><input type="checkbox" class="aff-team" value="Karine"><span>Karine</span></label>
             </div>
-          </div>
-        </fieldset>
-
-        <!-- Adresse chantier différente (BON) -->
-        <fieldset>
-          <legend>Adresse chantier</legend>
-          <label><input type="checkbox" name="bon.adresse_chantier_diff" id="b-adrdiff"> Adresse chantier différente</label>
-          <div id="b-bloc-chantier" style="display:none; margin-top:8px">
-            <div class="row"><label>Adresse chantier</label><input name="bon.adresse_chantier" type="text"></div>
-            <div class="grid-2">
-              <div class="row"><label>Code postal chantier</label><input name="bon.chantier_code_postal" type="text"></div>
-              <div class="row"><label>Ville chantier</label><input name="bon.chantier_ville" type="text"></div>
-            </div>
-            <div class="grid-2">
-              <div class="row"><label>Nom locataire</label><input name="bon.nom_locataire" type="text"></div>
-              <div class="row"><label>Téléphone locataire</label><input name="bon.tel_locataire" type="tel"></div>
-            </div>
-            <div class="row"><label>Remarques chantier</label><textarea name="bon.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
           </div>
         </fieldset>
 
@@ -265,12 +571,30 @@
           </div>
         </fieldset>
 
+        <!-- Photos chantier -->
+        <fieldset>
+          <legend>Photos chantier</legend>
+          <div class="gallery" id="mgr-gallery"></div>
+          <div class="small muted" id="mgr-gallery-empty" style="margin:6px 0">Aucune photo.</div>
+          <div style="margin-top:8px">
+            <input type="file" id="mgr-photo-input" accept="image/*" multiple style="display:none">
+            <button type="button" class="btn" id="mgr-photo-add">Ajouter des photos</button>
+          </div>
+        </fieldset>
+
+        <!-- Signature client (lecture seule, saisie côté intervenant) -->
+        <fieldset>
+          <legend>Signature client</legend>
+          <div id="mgr-signature-box" class="small muted">Chantier pas encore terminé par l'intervenant.</div>
+          <button type="button" class="btn success" id="mgr-sig-open" style="width:100%; margin-top:8px; display:none">Terminer le chantier</button>
+        </fieldset>
+
         <!-- Feuille d'heures -->
         <fieldset>
           <legend>Feuille d’heures</legend>
           <div class="table-responsive">
             <table>
-              <thead><tr><th>Date</th><th>Heure début</th><th>Date</th><th>Heure fin</th><th>Heures</th><th>Commentaire</th><th></th></tr></thead>
+              <thead><tr><th>Date</th><th>Heure début</th><th>Date</th><th>Heure fin</th><th>Commentaire</th><th></th></tr></thead>
               <tbody id="heures-body"></tbody>
             </table>
           </div>
@@ -300,10 +624,13 @@
       </div>
     </div>
 
-    <div class="grid-2">
+    <div class="grid-3">
       <div class="row"><label>Client – Nom</label><input name="direct.client_nom" type="text"></div>
+      <div class="row"><label>Client – N°</label><input name="direct.client_num" type="text"></div>
       <div class="row"><label>Téléphone</label><input name="direct.client_tel" type="tel"></div>
     </div>
+
+    <div class="row"><label>Email</label><input name="direct.email" type="email"></div>
 
     <div class="row"><label>Adresse</label><input name="direct.client_adresse" type="text"></div>
 
@@ -311,11 +638,37 @@
       <div class="row"><label>Code postal</label><input name="direct.client_code_postal" type="text"></div>
       <div class="row"><label>Ville</label><input name="direct.client_ville" type="text"></div>
     </div>
+    <div class="addr-actions">
+      <button type="button" class="btn outline addr-open" data-addr="direct.client_adresse" data-cp="direct.client_code_postal" data-ville="direct.client_ville">📍 Maps</button>
+      <button type="button" class="btn outline addr-open-waze" data-addr="direct.client_adresse" data-cp="direct.client_code_postal" data-ville="direct.client_ville">🚗 Waze</button>
+    </div>
 
     <div class="row">
       <label>Objet du dépannage / travaux à faire</label>
       <textarea name="direct.objet" rows="5" placeholder="Décrire la panne ou l’intervention à réaliser..."></textarea>
     </div>
+
+    <!-- Adresse chantier différente -->
+    <fieldset>
+      <legend>Adresse chantier</legend>
+      <label><input type="checkbox" name="direct.adresse_chantier_diff" id="dir-adrdiff"> Adresse chantier différente</label>
+      <div id="dir-bloc-chantier" style="display:none; margin-top:8px">
+        <div class="row"><label>Adresse chantier</label><input name="direct.adresse_chantier" type="text"></div>
+        <div class="grid-2">
+          <div class="row"><label>Code postal chantier</label><input name="direct.chantier_code_postal" type="text"></div>
+          <div class="row"><label>Ville chantier</label><input name="direct.chantier_ville" type="text"></div>
+        </div>
+        <div class="addr-actions">
+          <button type="button" class="btn outline addr-open" data-addr="direct.adresse_chantier" data-cp="direct.chantier_code_postal" data-ville="direct.chantier_ville">📍 Maps</button>
+          <button type="button" class="btn outline addr-open-waze" data-addr="direct.adresse_chantier" data-cp="direct.chantier_code_postal" data-ville="direct.chantier_ville">🚗 Waze</button>
+        </div>
+        <div class="grid-2">
+          <div class="row"><label>Nom locataire</label><input name="direct.nom_locataire" type="text"></div>
+          <div class="row"><label>Téléphone locataire</label><input name="direct.tel_locataire" type="tel"></div>
+        </div>
+        <div class="row"><label>Remarques chantier</label><textarea name="direct.remarques_chantier" rows="3" placeholder="Digicode, étage, accès, contraintes…"></textarea></div>
+      </div>
+    </fieldset>
 
     <fieldset>
       <legend>Encadrant</legend>
@@ -329,17 +682,47 @@
 
     <fieldset>
       <legend>Équipe affectée</legend>
+      <div class="small muted" style="margin-bottom:4px">Charbo</div>
       <div class="chips">
         <label><input type="checkbox" class="direct-aff-team" value="Alexy"><span>Alexy</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Thomas"><span>Thomas</span></label>
         <label><input type="checkbox" class="direct-aff-team" value="Augustin"><span>Augustin</span></label>
         <label><input type="checkbox" class="direct-aff-team" value="Pierre-Clément"><span>Pierre-Clément</span></label>
         <label><input type="checkbox" class="direct-aff-team" value="Valentin"><span>Valentin</span></label>
-        <label><input type="checkbox" class="direct-aff-team" value="Maxence"><span>Maxence</span></label>
-        <label><input type="checkbox" class="direct-aff-team" value="Naiki"><span>Naiki</span></label>
         <label><input type="checkbox" class="direct-aff-team" value="Benoit"><span>Benoit</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Naiki"><span>Naiki</span></label>
         <label><input type="checkbox" class="direct-aff-team" value="Burak"><span>Burak</span></label>
         <label><input type="checkbox" class="direct-aff-team" value="Bertrand"><span>Bertrand</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Maxence"><span>Maxence</span></label>
         <label><input type="checkbox" class="direct-aff-team" value="Olivier"><span>Olivier</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Edgar"><span>Edgar</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Vivien"><span>Vivien</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Laurent"><span>Laurent</span></label>
+      </div>
+
+      <div class="small muted" style="margin:10px 0 4px">Tarare</div>
+      <div class="chips">
+        <label><input type="checkbox" class="direct-aff-team" value="Denis"><span>Denis</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Bachir"><span>Bachir</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Olivier"><span>Olivier</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Fabrice"><span>Fabrice</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Mazlum"><span>Mazlum</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Omer"><span>Omer</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Lucas"><span>Lucas</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Thierry"><span>Thierry</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Anthony"><span>Anthony</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Gérard"><span>Gérard</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Julien"><span>Julien</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Philippe"><span>Philippe</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Cheik"><span>Cheik</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Ahmed"><span>Ahmed</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Yoseane"><span>Yoseane</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Chris"><span>Chris</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Wakary"><span>Wakary</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="ThomasV"><span>ThomasV</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Christophe"><span>Christophe</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Cédric A"><span>Cédric A</span></label>
+        <label><input type="checkbox" class="direct-aff-team" value="Cédric M"><span>Cédric M</span></label>
       </div>
     </fieldset>
 
@@ -367,6 +750,16 @@
       const bloc2 = document.getElementById('b-bloc-chantier');
       function sync2(){ if(cb2 && bloc2) bloc2.style.display = cb2.checked ? '' : 'none'; }
       cb2 && (cb2.onchange = sync2, sync2());
+
+      const cb3 = document.getElementById('dir-adrdiff');
+      const bloc3 = document.getElementById('dir-bloc-chantier');
+      function sync3(){ if(cb3 && bloc3) bloc3.style.display = cb3.checked ? '' : 'none'; }
+      cb3 && (cb3.onchange = sync3, sync3());
+
+      const cb4 = document.getElementById('d-refuse-cb');
+      const bloc4 = document.getElementById('d-refuse-bloc');
+      function sync4(){ if(cb4 && bloc4) bloc4.style.display = cb4.checked ? '' : 'none'; }
+      cb4 && (cb4.onchange = sync4, sync4());
     })();
   </script>
 
