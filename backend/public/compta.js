@@ -119,8 +119,10 @@ function makeDevisNumCompta(list = Store.load(Store.KEY_DEVIS) || []) {
 function initComptaDevisDefaults() {
   const numField = document.getElementById('cdnum');
   const dateField = document.getElementById('cddate');
+  const createdByField = document.getElementById('cd-created-by');
   if (numField && !numField.value) numField.value = makeDevisNumCompta();
   if (dateField && !dateField.value) dateField.value = new Date().toISOString().slice(0, 10);
+  if (createdByField && !createdByField.value) createdByField.value = CURRENT_USER || '';
 }
 
 initComptaDevisDefaults();
@@ -243,6 +245,7 @@ function resetComptaDevisForm() {
     else field.value = '';
   });
   document.getElementById('cd-admin').value = '';
+  document.getElementById('cd-created-by').value = '';
   setSelectedDevisEncadrantsCompta([]);
   document.getElementById('cd-bloc-chantier').style.display = 'none';
   resetDevisGalleryEmptyCompta();
@@ -266,6 +269,9 @@ document.getElementById('save-devis-compta').addEventListener('click', async () 
     refuse: raw['devis.refuse'] || 'non',
     urgence: raw['devis.urgence'] || 'normal',
     admin,
+    // Fige le créateur au premier enregistrement : jamais écrasé par les
+    // modifications suivantes, même faites par quelqu'un d'autre.
+    createdBy: current?.createdBy || CURRENT_USER || '',
     encadrants,
     encadrant: encadrants[0] || cleanText(raw['devis.encadrant']),
     pipeline: current?.pipeline || 'd-attente-appel',
@@ -322,6 +328,7 @@ document.getElementById('load-devis-compta').addEventListener('click', () => {
   applyRawValuesCompta(found.raw || {});
   setSelectedDevisEncadrantsCompta(found.encadrants?.length ? found.encadrants : (found.encadrant ? [found.encadrant] : []));
   document.getElementById('cd-admin').value = found.raw?.['devis.admin'] || found.admin || '';
+  document.getElementById('cd-created-by').value = found.createdBy || '—';
   document.getElementById('cd-bloc-chantier').style.display = found.raw?.['devis.adresse_chantier_diff'] === 'oui' ? '' : 'none';
   currentComptaDevisId = found.id;
   initDevisGalleryCompta(found);

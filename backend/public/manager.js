@@ -861,7 +861,7 @@ function buildDevisPrintHtml(item) {
       </div>
       <div class="print-meta">
         <div><strong>Date :</strong> ${formatPrintText(formatPrintDate(raw['devis.date_demande'])) || '-'}</div>
-        <div><strong>Indice :</strong> ${formatPrintText(raw['devis.indice']) || '-'}</div>
+        <div><strong>Cree par :</strong> ${formatPrintText(item.createdBy) || '-'}</div>
       </div>
     </div>
 
@@ -1051,6 +1051,7 @@ function printBonItem(item) {
 function buildCurrentDevisForPrint() {
   const raw = serializeNamedFields('devis');
   const encadrants = getSelectedDevisEncadrants();
+  const createdByField = $('#devis-created-by');
 
   return {
     num: cleanText(raw['devis.num_devis']),
@@ -1058,6 +1059,7 @@ function buildCurrentDevisForPrint() {
     objet: cleanText(raw['devis.objet_demande'] || raw['devis.objet']),
     signe: raw['devis.signe'] || 'non',
     refuse: raw['devis.refuse'] || 'non',
+    createdBy: createdByField?.value || CURRENT_USER || '',
     encadrants,
     encadrant: encadrants[0] || '',
     raw: {
@@ -1989,6 +1991,11 @@ function initDevisDefaults() {
   if (numField && !numField.value) {
     numField.value = makeDevisNum();
   }
+
+  const createdByField = $('#devis-created-by');
+  if (createdByField && !createdByField.value) {
+    createdByField.value = CURRENT_USER || '';
+  }
 }
 
 function initBonDirect() {
@@ -2030,6 +2037,11 @@ function openDevis(item) {
   const devisAdmin = $('#devis-admin');
   if (devisAdmin) {
     devisAdmin.value = item.raw?.['devis.admin'] || item.admin || '';
+  }
+
+  const createdByField = $('#devis-created-by');
+  if (createdByField) {
+    createdByField.value = item.createdBy || '—';
   }
 
   const blocChantier = $('#bloc-chantier');
@@ -2698,6 +2710,9 @@ $('#save-devis')?.addEventListener('click', async () => {
       : null,
     urgence: raw['devis.urgence'] || 'normal',
     admin,
+    // Fige le createur au premier enregistrement : jamais ecrase par les
+    // modifications suivantes, meme faites par quelqu'un d'autre.
+    createdBy: current?.createdBy || CURRENT_USER || '',
     encadrants,
     encadrant: encadrants[0] || cleanText(raw['devis.encadrant']),
     pipeline: current?.pipeline || 'd-attente-appel',
