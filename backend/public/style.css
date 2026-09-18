@@ -411,6 +411,124 @@ textarea {
   }
 }
 
+/* ===== Systeme de niveaux (intervenant) ===== */
+.level-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.level-badge {
+  position: relative;
+  width: 64px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.level-badge.large {
+  width: 108px;
+  height: 120px;
+  margin-bottom: 4px;
+}
+
+.level-badge .lb-base,
+.level-badge .lb-inner {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 22%, 100% 62%, 50% 100%, 0% 62%, 0% 22%);
+}
+
+.level-badge .lb-inner {
+  inset: 3px;
+  background: var(--panel);
+}
+
+.level-badge .lb-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 22px;
+}
+
+.level-badge.large .lb-num {
+  font-size: 40px;
+}
+
+@keyframes levelPulseGlow {
+  0%, 100% { filter: drop-shadow(0 0 10px var(--tier-glow-a)); }
+  50% { filter: drop-shadow(0 0 20px var(--tier-glow-b)); }
+}
+
+.level-badge.pulse {
+  animation: levelPulseGlow 2.2s ease-in-out infinite;
+}
+
+.level-info {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.level-name {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.level-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.level-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.level-progress-fill {
+  height: 100%;
+  border-radius: 5px;
+}
+
+.level-progress-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.level-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 9999;
+}
+
+.level-popup-card {
+  width: 100%;
+  max-width: 320px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
 /* ===== Planning semaine (manager, toute l'equipe) ===== */
 .planning-table th.person-col,
 .planning-table td.person-cell {

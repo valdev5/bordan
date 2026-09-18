@@ -51,6 +51,140 @@ function getMyBons() {
     : all.filter((bon) => (bon.team || []).includes(CURRENT_USER));
 }
 
+/*************************************************
+ * Systeme de niveaux : 1 point par chantier signe/
+ * termine par l'intervenant (pas de compteur separe
+ * a synchroniser - recalcule a chaque rendu a partir
+ * des bons deja stockes, donc jamais desynchronise).
+ **************************************************/
+const LEVEL_TIERS = [
+  { level: 1, name: 'Débutant', min: 0, color: '#64748b' },
+  { level: 2, name: 'Apprenti', min: 5, color: '#22c55e' },
+  { level: 3, name: 'Compagnon', min: 15, color: '#0ea5e9' },
+  { level: 4, name: 'Expert', min: 30, color: '#a855f7' },
+  { level: 5, name: 'Maître Artisan', min: 50, color: '#f59e0b' },
+  { level: 6, name: 'Légende Bordanova', min: 80, color: '#22d3ee' },
+];
+
+function hexToRgba(hex, alpha) {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function countCompletedMissionsFor(username) {
+  const all = Store.load(Store.KEY_BONS) || [];
+  return all.filter(
+    (bon) => (bon.team || []).includes(username) && (bon.status === 'facturer' || !!bon.signature),
+  ).length;
+}
+
+function getLevelForCount(count) {
+  let tier = LEVEL_TIERS[0];
+  LEVEL_TIERS.forEach((candidate) => {
+    if (count >= candidate.min) {
+      tier = candidate;
+    }
+  });
+
+  const next = LEVEL_TIERS[LEVEL_TIERS.indexOf(tier) + 1] || null;
+  const progressPct = next
+    ? Math.min(100, Math.round(((count - tier.min) / (next.min - tier.min)) * 100))
+    : 100;
+  const remaining = next ? next.min - count : 0;
+
+  return { tier, next, progressPct, remaining, count };
+}
+
+function renderLevelBadgeHtml(tier, options = {}) {
+  const sizeClass = options.large ? ' large' : '';
+  const pulseClass = options.pulse ? ' pulse' : '';
+  const glowStyle = options.pulse
+    ? ` style="--tier-glow-a:${hexToRgba(tier.color, 0.4)}; --tier-glow-b:${hexToRgba(tier.color, 0.65)};"`
+    : '';
+
+  return `
+    <div class="level-badge${sizeClass}${pulseClass}"${glowStyle}>
+      <div class="lb-base" style="background:${tier.color};"></div>
+      <div class="lb-inner"></div>
+      <div class="lb-num" style="color:${tier.color};">${tier.level}</div>
+    </div>
+  `;
+}
+
+function renderLevelCard() {
+  const el = document.getElementById('level-card');
+  if (!el || isManager(CURRENT_USER)) {
+    return;
+  }
+
+  const info = getLevelForCount(countCompletedMissionsFor(CURRENT_USER));
+
+  el.innerHTML = `
+    ${renderLevelBadgeHtml(info.tier)}
+    <div class="level-info">
+      <div class="level-name" style="color:${info.tier.color};">${escapeHtmlWorker(info.tier.name)}</div>
+      <div class="level-sub">Niveau ${info.tier.level} sur ${LEVEL_TIERS.length} &middot; ${info.count} chantier${info.count === 1 ? '' : 's'} terminé${info.count === 1 ? '' : 's'}</div>
+      ${info.next
+        ? `
+          <div class="level-progress-track"><div class="level-progress-fill" style="width:${info.progressPct}%; background:${info.tier.color};"></div></div>
+          <div class="level-progress-label">${info.remaining} restant${info.remaining === 1 ? '' : 's'} avant ${escapeHtmlWorker(info.next.name)}</div>
+        `
+        : '<div class="level-progress-label">Niveau maximum atteint</div>'}
+    </div>
+  `;
+}
+
+function showLevelPopup(prevCount, newCount, clientName) {
+  const prevInfo = getLevelForCount(prevCount);
+  const newInfo = getLevelForCount(newCount);
+  const leveledUp = newInfo.tier.level !== prevInfo.tier.level;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'level-popup-overlay';
+
+  overlay.innerHTML = leveledUp
+    ? `
+      <div class="level-popup-card">
+        ${renderLevelBadgeHtml(newInfo.tier, { large: true, pulse: true })}
+        <div style="font-size:22px; font-weight:800; color:${newInfo.tier.color};">Niveau supérieur !</div>
+        <div style="font-size:14.5px;">Vous êtes maintenant<br><strong>${escapeHtmlWorker(newInfo.tier.name)}</strong></div>
+        <div class="small muted">Niveau ${prevInfo.tier.level} &rarr; Niveau ${newInfo.tier.level}</div>
+        <button type="button" class="btn primary" id="level-popup-close" style="width:100%; margin-top:6px;">Continuer</button>
+      </div>
+    `
+    : `
+      <div class="level-popup-card">
+        <div style="width:64px; height:64px; border-radius:50%; background:rgba(14,165,233,0.12); border:2px solid var(--primary); display:flex; align-items:center; justify-content:center;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <div style="font-size:20px; font-weight:800;">Chantier terminé !</div>
+        ${clientName ? `<div class="small muted" style="margin-top:-6px;">${escapeHtmlWorker(clientName)}</div>` : ''}
+        <div style="font-size:13px; font-weight:800; color:#22c55e; background:rgba(34,197,94,0.14); border-radius:999px; padding:6px 14px;">+1 chantier</div>
+        ${newInfo.next
+          ? `
+            <div style="width:100%; margin-top:4px;">
+              <div class="small muted">Progression vers ${escapeHtmlWorker(newInfo.next.name)}</div>
+              <div class="level-progress-track"><div class="level-progress-fill" style="width:${newInfo.progressPct}%; background:${newInfo.tier.color};"></div></div>
+              <div class="level-progress-label" style="text-align:center;">${newInfo.remaining} chantier${newInfo.remaining === 1 ? '' : 's'} restant${newInfo.remaining === 1 ? '' : 's'}</div>
+            </div>
+          `
+          : '<div class="small muted">Niveau maximum atteint !</div>'}
+        <button type="button" class="btn primary" id="level-popup-close" style="width:100%; margin-top:6px;">Continuer</button>
+      </div>
+    `;
+
+  document.body.appendChild(overlay);
+  overlay.querySelector('#level-popup-close')?.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      overlay.remove();
+    }
+  });
+}
+
 function tsOfWorker(message) {
   if (!message) {
     return 0;
@@ -360,6 +494,8 @@ function toFloatQuarter(value) {
 }
 
 function renderWork() {
+  renderLevelCard();
+
   const wrap = document.getElementById('work-list');
   const empty = document.getElementById('work-empty');
   if (!wrap || !empty) {
@@ -878,6 +1014,8 @@ function renderWork() {
           return;
         }
 
+        const prevCount = countCompletedMissionsFor(CURRENT_USER);
+
         const copy = { ...allBons[index] };
         copy.signature = {
           present: result.present,
@@ -894,6 +1032,11 @@ function renderWork() {
         Store.save(Store.KEY_BONS, allBons);
 
         renderWork();
+
+        const newCount = countCompletedMissionsFor(CURRENT_USER);
+        if (newCount > prevCount) {
+          showLevelPopup(prevCount, newCount, copy.client);
+        }
       });
     }
 
