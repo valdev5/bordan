@@ -419,10 +419,10 @@ textarea {
 }
 
 .level-badge {
-  position: relative;
   width: 64px;
   height: 72px;
   flex-shrink: 0;
+  display: block;
 }
 
 .level-badge.large {
@@ -431,30 +431,33 @@ textarea {
   margin-bottom: 4px;
 }
 
-.level-badge .lb-base,
-.level-badge .lb-inner {
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(50% 0%, 100% 22%, 100% 62%, 50% 100%, 0% 62%, 0% 22%);
+.level-badge.topbar {
+  width: 44px;
+  height: 49px;
+  margin: -12px 0;
 }
 
-.level-badge .lb-inner {
-  inset: 3px;
-  background: var(--panel);
-}
-
-.level-badge .lb-num {
-  position: absolute;
-  inset: 0;
+.whoami-inline {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 22px;
+  gap: 8px;
 }
 
-.level-badge.large .lb-num {
-  font-size: 40px;
+.whoami-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.whoami-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.whoami-level {
+  font-size: 10.5px;
+  font-weight: 700;
 }
 
 @keyframes levelPulseGlow {

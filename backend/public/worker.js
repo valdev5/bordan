@@ -13,7 +13,13 @@ if (!CURRENT_USER) {
 
 const whoami = document.getElementById('whoami');
 if (whoami) {
-  whoami.textContent = `Connecte : ${CURRENT_USER || '-'}`;
+  whoami.innerHTML = `
+    <span id="whoami-badge"></span>
+    <span class="whoami-text">
+      <span id="whoami-name" class="whoami-name">${escapeHtmlWorker(CURRENT_USER || '-')}</span>
+      <span id="whoami-level" class="whoami-level"></span>
+    </span>
+  `;
 }
 
 document.getElementById('btn-logout')?.addEventListener('click', (event) => {
@@ -58,12 +64,12 @@ function getMyBons() {
  * des bons deja stockes, donc jamais desynchronise).
  **************************************************/
 const LEVEL_TIERS = [
-  { level: 1, name: 'Débutant', min: 0, color: '#64748b' },
-  { level: 2, name: 'Apprenti', min: 5, color: '#22c55e' },
-  { level: 3, name: 'Compagnon', min: 15, color: '#0ea5e9' },
-  { level: 4, name: 'Expert', min: 30, color: '#a855f7' },
-  { level: 5, name: 'Maître Artisan', min: 50, color: '#f59e0b' },
-  { level: 6, name: 'Légende Bordanova', min: 80, color: '#22d3ee' },
+  { level: 1, min: 0, color: '#64748b' },
+  { level: 2, min: 5, color: '#22c55e' },
+  { level: 3, min: 15, color: '#0ea5e9' },
+  { level: 4, min: 30, color: '#a855f7' },
+  { level: 5, min: 50, color: '#f59e0b' },
+  { level: 6, min: 80, color: '#22d3ee' },
 ];
 
 function hexToRgba(hex, alpha) {
@@ -99,38 +105,50 @@ function getLevelForCount(count) {
 }
 
 function renderLevelBadgeHtml(tier, options = {}) {
-  const sizeClass = options.large ? ' large' : '';
+  const sizeClass = options.large ? ' large' : options.topbar ? ' topbar' : '';
   const pulseClass = options.pulse ? ' pulse' : '';
   const glowStyle = options.pulse
     ? ` style="--tier-glow-a:${hexToRgba(tier.color, 0.4)}; --tier-glow-b:${hexToRgba(tier.color, 0.65)};"`
     : '';
 
-  return `
-    <div class="level-badge${sizeClass}${pulseClass}"${glowStyle}>
-      <div class="lb-base" style="background:${tier.color};"></div>
-      <div class="lb-inner"></div>
-      <div class="lb-num" style="color:${tier.color};">${tier.level}</div>
-    </div>
-  `;
+  return `<img src="badges/level-${tier.level}.svg" class="level-badge${sizeClass}${pulseClass}"${glowStyle} alt="Niveau ${tier.level}">`;
 }
 
 function renderLevelCard() {
+  const badgeSlot = document.getElementById('whoami-badge');
+  const levelSlot = document.getElementById('whoami-level');
   const el = document.getElementById('level-card');
-  if (!el || isManager(CURRENT_USER)) {
+
+  if (isManager(CURRENT_USER)) {
+    if (el) {
+      el.innerHTML = '';
+    }
     return;
   }
 
   const info = getLevelForCount(countCompletedMissionsFor(CURRENT_USER));
 
+  if (badgeSlot) {
+    badgeSlot.innerHTML = renderLevelBadgeHtml(info.tier, { topbar: true });
+  }
+  if (levelSlot) {
+    levelSlot.textContent = `Niveau ${info.tier.level}`;
+    levelSlot.style.color = info.tier.color;
+  }
+
+  if (!el) {
+    return;
+  }
+
   el.innerHTML = `
     ${renderLevelBadgeHtml(info.tier)}
     <div class="level-info">
-      <div class="level-name" style="color:${info.tier.color};">${escapeHtmlWorker(info.tier.name)}</div>
-      <div class="level-sub">Niveau ${info.tier.level} sur ${LEVEL_TIERS.length} &middot; ${info.count} chantier${info.count === 1 ? '' : 's'} terminé${info.count === 1 ? '' : 's'}</div>
+      <div class="level-name" style="color:${info.tier.color};">Niveau ${info.tier.level}</div>
+      <div class="level-sub">${info.tier.level} sur ${LEVEL_TIERS.length} &middot; ${info.count} chantier${info.count === 1 ? '' : 's'} terminé${info.count === 1 ? '' : 's'}</div>
       ${info.next
         ? `
           <div class="level-progress-track"><div class="level-progress-fill" style="width:${info.progressPct}%;"></div></div>
-          <div class="level-progress-label">${info.remaining} restant${info.remaining === 1 ? '' : 's'} avant ${escapeHtmlWorker(info.next.name)}</div>
+          <div class="level-progress-label">${info.remaining} restant${info.remaining === 1 ? '' : 's'} avant le niveau ${info.next.level}</div>
         `
         : '<div class="level-progress-label">Niveau maximum atteint</div>'}
     </div>
@@ -150,7 +168,7 @@ function showLevelPopup(prevCount, newCount, clientName) {
       <div class="level-popup-card">
         ${renderLevelBadgeHtml(newInfo.tier, { large: true, pulse: true })}
         <div style="font-size:22px; font-weight:800; color:${newInfo.tier.color};">Niveau supérieur !</div>
-        <div style="font-size:14.5px;">Vous êtes maintenant<br><strong>${escapeHtmlWorker(newInfo.tier.name)}</strong></div>
+        <div style="font-size:14.5px;">Vous êtes maintenant<br><strong>Niveau ${newInfo.tier.level}</strong></div>
         <div class="small muted">Niveau ${prevInfo.tier.level} &rarr; Niveau ${newInfo.tier.level}</div>
         <button type="button" class="btn primary" id="level-popup-close" style="width:100%; margin-top:6px;">Continuer</button>
       </div>
@@ -166,7 +184,7 @@ function showLevelPopup(prevCount, newCount, clientName) {
         ${newInfo.next
           ? `
             <div style="width:100%; margin-top:4px;">
-              <div class="small muted">Progression vers ${escapeHtmlWorker(newInfo.next.name)}</div>
+              <div class="small muted">Progression vers le niveau ${newInfo.next.level}</div>
               <div class="level-progress-track"><div class="level-progress-fill" style="width:${newInfo.progressPct}%;"></div></div>
               <div class="level-progress-label" style="text-align:center;">${newInfo.remaining} chantier${newInfo.remaining === 1 ? '' : 's'} restant${newInfo.remaining === 1 ? '' : 's'}</div>
             </div>

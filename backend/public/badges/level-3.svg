@@ -1,0 +1,14 @@
+<svg width="200" height="220" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="ring3" cx="35%" cy="28%" r="75%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </radialGradient>
+  </defs>
+  <path d="M72 148 L54 212 L88 194 Z" fill="#0b1015" stroke="#0ea5e9" stroke-width="2"/>
+  <path d="M128 148 L146 212 L112 194 Z" fill="#0b1015" stroke="#0ea5e9" stroke-width="2"/>
+  <circle cx="100" cy="95" r="75" fill="url(#ring3)" stroke="#0369a1" stroke-width="4"/>
+  <circle cx="100" cy="95" r="56" fill="#0f1720" stroke="#0ea5e9" stroke-width="3"/>
+  <ellipse cx="76" cy="64" rx="28" ry="15" fill="#ffffff" opacity="0.14"/>
+  <text x="100" y="118" font-family="Nunito, system-ui, sans-serif" font-size="56" font-weight="900" fill="#0ea5e9" text-anchor="middle">3</text>
+</svg>
