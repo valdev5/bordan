@@ -20,6 +20,14 @@ async function apiFetch(path, options = {}) {
   const res = await fetch(`${window.API_BASE_URL}${path}`, finalOptions);
   const data = await res.json().catch(() => ({}));
 
+  if (res.status === 401 && token) {
+    // Le jeton stocke n'est plus accepte (expire au bout de 8h, voir
+    // routes/auth.js) : sans ca, l'appli continuait de retenter en boucle
+    // et d'echouer silencieusement, parfois pendant des jours, sans jamais
+    // renvoyer l'utilisateur se reconnecter pour obtenir un jeton valide.
+    window.Auth?.logout?.();
+  }
+
   if (!res.ok) {
     throw new Error(data.error || `HTTP ${res.status}`);
   }
