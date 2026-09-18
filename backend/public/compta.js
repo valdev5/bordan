@@ -286,6 +286,11 @@ document.getElementById('save-devis-compta').addEventListener('click', async () 
     return;
   }
 
+  if (!item.encadrants.length) {
+    alert('Merci de désigner au moins un encadrant/responsable avant d\'enregistrer le devis.');
+    return;
+  }
+
   const exists = list.some((devis) => devis.num === item.num && devis.id !== currentComptaDevisId);
   if (exists) {
     alert('Un devis avec ce numéro existe déjà.');

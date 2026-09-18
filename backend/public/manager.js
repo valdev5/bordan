@@ -2714,6 +2714,11 @@ $('#save-devis')?.addEventListener('click', async () => {
     return;
   }
 
+  if (!item.encadrants.length) {
+    alert('Merci de designer au moins un encadrant/responsable avant d\'enregistrer le devis.');
+    return;
+  }
+
   const exists = list.some((devis) => devis.num === item.num && devis.id !== currentDevisId);
   if (exists) {
     alert('Un devis avec ce numero existe deja.');
