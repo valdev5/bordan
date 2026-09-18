@@ -57,6 +57,19 @@ const Store = (() => {
     return list.filter((item) => item.id !== id);
   }
 
+  // Ajoute au cache local les elements du serveur totalement inconnus en
+  // local (nouvelle affectation, etc.) - utilise meme quand une modif locale
+  // est en attente de push, pour ne jamais retarder l'apparition d'un
+  // element qu'on n'a de toute facon pas pu modifier localement.
+  function mergeNewServerItems(key, serverList) {
+    const localList = load(key);
+    const localIds = new Set(localList.map((item) => String(item?.id)));
+    const newItems = serverList.filter((item) => item?.id != null && !localIds.has(String(item.id)));
+    if (!newItems.length) return false;
+    writeLocal(key, [...localList, ...newItems]);
+    return true;
+  }
+
   function upsertByField(list, item, field, forcedId = null) {
     const idx = item[field] ? list.findIndex((entry) => entry[field] === item[field]) : -1;
     const id = forcedId ?? (idx > -1 ? list[idx].id : Date.now());
@@ -170,14 +183,24 @@ const Store = (() => {
       // serveur (on perdrait la modif en attente) ; a la place on retente
       // l'envoi a chaque synchro, jusqu'a ce qu'il aboutisse.
       if (dirtyKeys.has(KEY_DEVIS)) {
-        await pushKey(KEY_DEVIS);
+        if (mergeNewServerItems(KEY_DEVIS, serverDevis)) changed = true;
+        try {
+          await pushKey(KEY_DEVIS);
+        } catch (error) {
+          console.warn('Echec de synchro pour devis', error);
+        }
       } else if (devisServerChanged) {
         writeLocal(KEY_DEVIS, serverDevis);
         changed = true;
       }
 
       if (dirtyKeys.has(KEY_BONS)) {
-        await pushKey(KEY_BONS);
+        if (mergeNewServerItems(KEY_BONS, serverBons)) changed = true;
+        try {
+          await pushKey(KEY_BONS);
+        } catch (error) {
+          console.warn('Echec de synchro pour bons', error);
+        }
       } else if (bonsServerChanged) {
         writeLocal(KEY_BONS, serverBons);
         changed = true;
