@@ -129,7 +129,7 @@ function renderLevelCard() {
       <div class="level-sub">Niveau ${info.tier.level} sur ${LEVEL_TIERS.length} &middot; ${info.count} chantier${info.count === 1 ? '' : 's'} terminé${info.count === 1 ? '' : 's'}</div>
       ${info.next
         ? `
-          <div class="level-progress-track"><div class="level-progress-fill" style="width:${info.progressPct}%; background:${info.tier.color};"></div></div>
+          <div class="level-progress-track"><div class="level-progress-fill" style="width:${info.progressPct}%;"></div></div>
           <div class="level-progress-label">${info.remaining} restant${info.remaining === 1 ? '' : 's'} avant ${escapeHtmlWorker(info.next.name)}</div>
         `
         : '<div class="level-progress-label">Niveau maximum atteint</div>'}
@@ -167,7 +167,7 @@ function showLevelPopup(prevCount, newCount, clientName) {
           ? `
             <div style="width:100%; margin-top:4px;">
               <div class="small muted">Progression vers ${escapeHtmlWorker(newInfo.next.name)}</div>
-              <div class="level-progress-track"><div class="level-progress-fill" style="width:${newInfo.progressPct}%; background:${newInfo.tier.color};"></div></div>
+              <div class="level-progress-track"><div class="level-progress-fill" style="width:${newInfo.progressPct}%;"></div></div>
               <div class="level-progress-label" style="text-align:center;">${newInfo.remaining} chantier${newInfo.remaining === 1 ? '' : 's'} restant${newInfo.remaining === 1 ? '' : 's'}</div>
             </div>
           `
