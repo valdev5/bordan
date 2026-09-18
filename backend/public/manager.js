@@ -58,7 +58,7 @@ $('#btn-reset-user-password')?.addEventListener('click', async () => {
   }
 });
 
-if (cleanText(CURRENT_USER).toLowerCase() === 'karine') {
+if (['karine', 'sophie'].includes(cleanText(CURRENT_USER).toLowerCase())) {
   const comptaSpaceLink = $('#btn-compta-space');
   if (comptaSpaceLink) {
     comptaSpaceLink.style.display = '';
@@ -444,9 +444,11 @@ function getPreferredEncadrants(item = {}) {
 }
 
 // Visibilite supplementaire : certains encadrants voient aussi les fiches
-// d'un autre encadrant (ex: Karine seconde Laurent).
+// d'un autre encadrant (ex: Karine seconde Laurent). Sophie a les memes
+// acces que Karine (meme configuration).
 const EXTRA_CHEF_VISIBILITY = {
   karine: ['laurent'],
+  sophie: ['laurent'],
 };
 
 function belongsToChef(item) {
@@ -467,21 +469,21 @@ function belongsToChef(item) {
   return team.some((name) => namesToMatch.includes(cleanText(name).toLowerCase()));
 }
 
-// Pour les devis specifiquement : Karine recupere aussi ceux qui lui sont
-// envoyes en tant que compta (champ "Envoyer a la compta"), en plus de ceux
-// ou elle est encadrante. Ne s'applique qu'a elle.
+// Pour les devis specifiquement : Karine (et Sophie, memes acces) recupere
+// aussi ceux qui lui sont envoyes en tant que compta (champ "Envoyer a la
+// compta"), en plus de ceux ou elle est encadrante. Ne s'applique qu'a elles.
 function belongsToChefDevis(devis) {
   if (belongsToChef(devis)) {
     return true;
   }
 
   const chefLower = cleanText(CURRENT_USER).toLowerCase();
-  if (chefLower !== 'karine') {
+  if (!['karine', 'sophie'].includes(chefLower)) {
     return false;
   }
 
   const admin = cleanText(devis.admin || devis.raw?.['devis.admin']).toLowerCase();
-  return admin === 'karine';
+  return admin === chefLower;
 }
 
 function removeDevisByNum(num) {

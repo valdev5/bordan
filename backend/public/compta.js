@@ -29,8 +29,9 @@ document.querySelectorAll('.tab[data-compta-tab]').forEach((tab) => {
 
 // Karine est manager mais garde un pied dans l'espace compta, juste pour
 // suivre "A facturer" et "Devis" — la creation de bons se fait deja depuis
-// son espace manager, inutile de la dupliquer ici.
-if (cleanText(CURRENT_USER).toLowerCase() === 'karine') {
+// son espace manager, inutile de la dupliquer ici. Sophie a les memes
+// acces que Karine.
+if (['karine', 'sophie'].includes(cleanText(CURRENT_USER).toLowerCase())) {
   document.querySelectorAll('.tab[data-compta-tab]').forEach((tab) => {
     if (!['facturer', 'devis'].includes(tab.dataset.comptaTab)) {
       tab.style.display = 'none';
